@@ -1,69 +1,59 @@
-import Image from "next/image";
+import PlaceholderField from "@/components/PlaceholderField";
 
 export default function Home() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-10 px-6 py-10">
+      <section className="text-center sm:text-left">
+        <h1 className="text-3xl font-bold tracking-tight text-[#1b4965]">
+          INFOON
+        </h1>
+        <p className="mt-2 max-w-2xl text-zinc-600 dark:text-zinc-400">
+          자료명, 저장 위치, 자료 간의 관계, 설명 등을 등록하면 목록을
+          정리하고, 필터에 따라 자료를 보여주고 인용 양식을 제공하는
+          서비스입니다.
+        </p>
+      </section>
+
+      <section
+        id="new-material"
+        className="overflow-hidden rounded-lg border border-black/10 dark:border-white/10"
+      >
+        <h2 className="bg-[#1b4965] px-5 py-3 font-medium text-white">
+          새 자료 등록하기
+        </h2>
+        <div className="flex flex-col gap-3 p-5">
+          <PlaceholderField label="프로젝트" />
+          <PlaceholderField label="자료명" />
+          <PlaceholderField label="자료 종류" />
+          <PlaceholderField label="저장 위치" />
+          <PlaceholderField label="중요도" />
+          <PlaceholderField label="자료 설명" tall />
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      </section>
+
+      <section
+        id="materials"
+        className="overflow-hidden rounded-lg border border-black/10 dark:border-white/10"
+      >
+        <h2 className="bg-[#1b4965] px-5 py-3 font-medium text-white">
+          자료 확인하기
+        </h2>
+        <div className="flex flex-col gap-4 p-5">
+          <div className="flex flex-wrap gap-4">
+            <PlaceholderField label="프로젝트" />
+            <PlaceholderField label="정렬" />
+            <PlaceholderField label="필터" />
+          </div>
+          <div className="flex flex-col gap-2">
+            {[1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="h-14 rounded border border-dashed border-zinc-300 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900"
+              />
+            ))}
+          </div>
         </div>
-      </main>
-    </div>
+      </section>
+    </main>
   );
 }
