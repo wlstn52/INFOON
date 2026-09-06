@@ -1,6 +1,30 @@
+"use client";
+
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useSyncExternalStore } from "react";
+import {
+  getServerSnapshot,
+  getSnapshot,
+  logout,
+  subscribe,
+  type Session,
+} from "@/lib/mockAuth";
 
 export default function SiteHeader() {
+  const router = useRouter();
+  const sessionRaw = useSyncExternalStore(
+    subscribe,
+    getSnapshot,
+    getServerSnapshot,
+  );
+  const session: Session | null = sessionRaw ? JSON.parse(sessionRaw) : null;
+
+  function handleLogout() {
+    logout();
+    router.push("/");
+  }
+
   return (
     <header className="border-b border-black/10 dark:border-white/10">
       <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-4">
@@ -19,12 +43,26 @@ export default function SiteHeader() {
           <a href="#new-material" className="text-zinc-600 hover:text-[#1b4965] dark:text-zinc-400">
             새 자료 등록
           </a>
-          <Link
-            href="/login"
-            className="rounded-full bg-[#1b4965] px-4 py-1.5 text-white transition-colors hover:bg-[#163a52]"
-          >
-            로그인
-          </Link>
+          {session ? (
+            <div className="flex items-center gap-3">
+              <span className="text-zinc-600 dark:text-zinc-400">
+                {session.name}님
+              </span>
+              <button
+                onClick={handleLogout}
+                className="rounded-full border border-zinc-300 px-4 py-1.5 text-zinc-600 transition-colors hover:border-[#1b4965] hover:text-[#1b4965] dark:border-zinc-700 dark:text-zinc-400"
+              >
+                로그아웃
+              </button>
+            </div>
+          ) : (
+            <Link
+              href="/login"
+              className="rounded-full bg-[#1b4965] px-4 py-1.5 text-white transition-colors hover:bg-[#163a52]"
+            >
+              로그인
+            </Link>
+          )}
         </nav>
       </div>
     </header>
