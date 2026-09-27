@@ -1,5 +1,5 @@
 import MaterialBrowser from "@/components/MaterialBrowser";
-import PlaceholderField from "@/components/PlaceholderField";
+import MaterialForm from "@/components/MaterialForm";
 
 export default function Home() {
   return (
@@ -22,14 +22,7 @@ export default function Home() {
         <h2 className="bg-[#1b4965] px-5 py-3 font-medium text-white">
           새 자료 등록하기
         </h2>
-        <div className="flex flex-col gap-3 p-5">
-          <PlaceholderField label="프로젝트" />
-          <PlaceholderField label="자료명" />
-          <PlaceholderField label="자료 종류" />
-          <PlaceholderField label="저장 위치" />
-          <PlaceholderField label="중요도" />
-          <PlaceholderField label="자료 설명" tall />
-        </div>
+        <MaterialForm />
       </section>
 
       <section
