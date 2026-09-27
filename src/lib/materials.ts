@@ -10,10 +10,15 @@ export type Material = {
   description: string;
   createdAt: string; // YYYY-MM-DD
   // 인용 생성을 위한 세부 사항 - 필요한 자료에만 선택적으로 입력
-  author?: string;
-  publisher?: string;
-  year?: string;
-  url?: string;
+  author?: string; // 저자
+  publisher?: string; // 출판사
+  publish_date?: string; // 발표 날짜
+  year?: string;  // 발표 년도
+  langauge?: string; // 언어
+  url?: string; // url
+  access_date?: string; // 원문 접근일
+  organization?: string; // 기관
+  identifier?: string; // 식별자 ex) DOI, ISBN
 };
 
 const MATERIALS_KEY = "infoon_materials";

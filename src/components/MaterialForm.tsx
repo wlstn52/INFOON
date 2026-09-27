@@ -35,8 +35,13 @@ export default function MaterialForm() {
   const [showDetails, setShowDetails] = useState(false);
   const [author, setAuthor] = useState("");
   const [publisher, setPublisher] = useState("");
+  const [publishDate, setPublishDate] = useState("");
   const [year, setYear] = useState("");
+  const [langauge, setLangauge] = useState("");
   const [url, setUrl] = useState("");
+  const [accessDate, setAccessDate] = useState("");
+  const [organization, setOrganization] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
@@ -56,8 +61,13 @@ export default function MaterialForm() {
       description,
       author: author || undefined,
       publisher: publisher || undefined,
+      publish_date: publishDate || undefined,
       year: year || undefined,
+      langauge: langauge || undefined,
       url: url || undefined,
+      access_date: accessDate || undefined,
+      organization: organization || undefined,
+      identifier: identifier || undefined,
     });
     setProjectName("");
     setTitle("");
@@ -67,8 +77,13 @@ export default function MaterialForm() {
     setDescription("");
     setAuthor("");
     setPublisher("");
+    setPublishDate("");
     setYear("");
+    setLangauge("");
     setUrl("");
+    setAccessDate("");
+    setOrganization("");
+    setIdentifier("");
     setError("");
     setMessage("자료가 등록되었습니다.");
   }
@@ -138,6 +153,16 @@ export default function MaterialForm() {
           </label>
           <label className="flex items-center gap-4">
             <span className="w-24 shrink-0 text-sm text-zinc-600 dark:text-zinc-400">
+              발표 날짜
+            </span>
+            <input
+              className={`${inputClass} flex-1`}
+              value={publishDate}
+              onChange={(e) => setPublishDate(e.target.value)}
+            />
+          </label>
+          <label className="flex items-center gap-4">
+            <span className="w-24 shrink-0 text-sm text-zinc-600 dark:text-zinc-400">
               출판년도
             </span>
             <input
@@ -148,12 +173,53 @@ export default function MaterialForm() {
           </label>
           <label className="flex items-center gap-4">
             <span className="w-24 shrink-0 text-sm text-zinc-600 dark:text-zinc-400">
+              언어
+            </span>
+            <input
+              className={`${inputClass} flex-1`}
+              value={langauge}
+              onChange={(e) => setLangauge(e.target.value)}
+            />
+          </label>
+          <label className="flex items-center gap-4">
+            <span className="w-24 shrink-0 text-sm text-zinc-600 dark:text-zinc-400">
               URL
             </span>
             <input
               className={`${inputClass} flex-1`}
               value={url}
               onChange={(e) => setUrl(e.target.value)}
+            />
+          </label>
+          <label className="flex items-center gap-4">
+            <span className="w-24 shrink-0 text-sm text-zinc-600 dark:text-zinc-400">
+              원문 접근일
+            </span>
+            <input
+              className={`${inputClass} flex-1`}
+              value={accessDate}
+              onChange={(e) => setAccessDate(e.target.value)}
+            />
+          </label>
+          <label className="flex items-center gap-4">
+            <span className="w-24 shrink-0 text-sm text-zinc-600 dark:text-zinc-400">
+              기관
+            </span>
+            <input
+              className={`${inputClass} flex-1`}
+              value={organization}
+              onChange={(e) => setOrganization(e.target.value)}
+            />
+          </label>
+          <label className="flex items-center gap-4">
+            <span className="w-24 shrink-0 text-sm text-zinc-600 dark:text-zinc-400">
+              식별자
+            </span>
+            <input
+              className={`${inputClass} flex-1`}
+              placeholder="DOI, ISBN 등"
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
             />
           </label>
         </div>
