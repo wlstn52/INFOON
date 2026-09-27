@@ -9,6 +9,11 @@ export type Material = {
   importance: number; // 1 (낮음) ~ 5 (높음)
   description: string;
   createdAt: string; // YYYY-MM-DD
+  // 인용 생성을 위한 세부 사항 - 필요한 자료에만 선택적으로 입력
+  author?: string;
+  publisher?: string;
+  year?: string;
+  url?: string;
 };
 
 const MATERIALS_KEY = "infoon_materials";

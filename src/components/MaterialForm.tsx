@@ -32,6 +32,11 @@ export default function MaterialForm() {
   const [location, setLocation] = useState("");
   const [importance, setImportance] = useState(3);
   const [description, setDescription] = useState("");
+  const [showDetails, setShowDetails] = useState(false);
+  const [author, setAuthor] = useState("");
+  const [publisher, setPublisher] = useState("");
+  const [year, setYear] = useState("");
+  const [url, setUrl] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
@@ -49,6 +54,10 @@ export default function MaterialForm() {
       location,
       importance,
       description,
+      author: author || undefined,
+      publisher: publisher || undefined,
+      year: year || undefined,
+      url: url || undefined,
     });
     setProjectName("");
     setTitle("");
@@ -56,6 +65,10 @@ export default function MaterialForm() {
     setLocation("");
     setImportance(3);
     setDescription("");
+    setAuthor("");
+    setPublisher("");
+    setYear("");
+    setUrl("");
     setError("");
     setMessage("자료가 등록되었습니다.");
   }
@@ -88,7 +101,63 @@ export default function MaterialForm() {
           value={title}
           onChange={(e) => setTitle(e.target.value)}
         />
+        <button
+          type="button"
+          onClick={() => setShowDetails((v) => !v)}
+          className="shrink-0 rounded-full border border-zinc-300 px-3 py-1.5 text-xs text-zinc-600 transition-colors hover:border-[#1b4965] hover:text-[#1b4965] dark:border-zinc-700 dark:text-zinc-400"
+        >
+          {showDetails ? "− 세부 사항" : "+ 세부 사항"}
+        </button>
       </label>
+
+      {showDetails && (
+        <div className="flex flex-col gap-3 rounded border border-dashed border-zinc-300 p-3 dark:border-zinc-700">
+          <p className="text-xs text-zinc-500">
+            인용 생성에 쓰이는 세부 정보입니다. 필요한 자료에만 입력하면
+            됩니다.
+          </p>
+          <label className="flex items-center gap-4">
+            <span className="w-24 shrink-0 text-sm text-zinc-600 dark:text-zinc-400">
+              저자
+            </span>
+            <input
+              className={`${inputClass} flex-1`}
+              value={author}
+              onChange={(e) => setAuthor(e.target.value)}
+            />
+          </label>
+          <label className="flex items-center gap-4">
+            <span className="w-24 shrink-0 text-sm text-zinc-600 dark:text-zinc-400">
+              출판사
+            </span>
+            <input
+              className={`${inputClass} flex-1`}
+              value={publisher}
+              onChange={(e) => setPublisher(e.target.value)}
+            />
+          </label>
+          <label className="flex items-center gap-4">
+            <span className="w-24 shrink-0 text-sm text-zinc-600 dark:text-zinc-400">
+              출판년도
+            </span>
+            <input
+              className={`${inputClass} flex-1`}
+              value={year}
+              onChange={(e) => setYear(e.target.value)}
+            />
+          </label>
+          <label className="flex items-center gap-4">
+            <span className="w-24 shrink-0 text-sm text-zinc-600 dark:text-zinc-400">
+              URL
+            </span>
+            <input
+              className={`${inputClass} flex-1`}
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+            />
+          </label>
+        </div>
+      )}
 
       <label className="flex items-center gap-4">
         <span className="w-24 shrink-0 text-sm text-zinc-600 dark:text-zinc-400">
