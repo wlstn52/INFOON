@@ -1,3 +1,4 @@
+import MaterialBrowser from "@/components/MaterialBrowser";
 import PlaceholderField from "@/components/PlaceholderField";
 
 export default function Home() {
@@ -38,21 +39,7 @@ export default function Home() {
         <h2 className="bg-[#1b4965] px-5 py-3 font-medium text-white">
           자료 확인하기
         </h2>
-        <div className="flex flex-col gap-4 p-5">
-          <div className="flex flex-wrap gap-4">
-            <PlaceholderField label="프로젝트" />
-            <PlaceholderField label="정렬" />
-            <PlaceholderField label="필터" />
-          </div>
-          <div className="flex flex-col gap-2">
-            {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className="h-14 rounded border border-dashed border-zinc-300 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900"
-              />
-            ))}
-          </div>
-        </div>
+        <MaterialBrowser />
       </section>
     </main>
   );
