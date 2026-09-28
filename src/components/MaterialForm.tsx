@@ -6,8 +6,10 @@ import {
   getServerSnapshot,
   getSnapshot,
   subscribe,
+  type Author,
   type Material,
 } from "@/lib/materials";
+import AuthorListEditor from "@/components/AuthorListEditor";
 
 const IMPORTANCE_OPTIONS = [1, 2, 3, 4, 5];
 
@@ -33,11 +35,11 @@ export default function MaterialForm() {
   const [importance, setImportance] = useState(3);
   const [description, setDescription] = useState("");
   const [showDetails, setShowDetails] = useState(false);
-  const [author, setAuthor] = useState("");
+  const [authors, setAuthors] = useState<Author[]>([]);
   const [publisher, setPublisher] = useState("");
   const [publishDate, setPublishDate] = useState("");
   const [year, setYear] = useState("");
-  const [langauge, setLangauge] = useState("");
+  const [language, setLanguage] = useState("");
   const [url, setUrl] = useState("");
   const [accessDate, setAccessDate] = useState("");
   const [organization, setOrganization] = useState("");
@@ -59,11 +61,11 @@ export default function MaterialForm() {
       location,
       importance,
       description,
-      author: author || undefined,
+      authors: authors.length > 0 ? authors : undefined,
       publisher: publisher || undefined,
       publish_date: publishDate || undefined,
       year: year || undefined,
-      langauge: langauge || undefined,
+      language: language || undefined,
       url: url || undefined,
       access_date: accessDate || undefined,
       organization: organization || undefined,
@@ -75,11 +77,11 @@ export default function MaterialForm() {
     setLocation("");
     setImportance(3);
     setDescription("");
-    setAuthor("");
+    setAuthors([]);
     setPublisher("");
     setPublishDate("");
     setYear("");
-    setLangauge("");
+    setLanguage("");
     setUrl("");
     setAccessDate("");
     setOrganization("");
@@ -131,16 +133,7 @@ export default function MaterialForm() {
             인용 생성에 쓰이는 세부 정보입니다. 필요한 자료에만 입력하면
             됩니다.
           </p>
-          <label className="flex items-center gap-4">
-            <span className="w-24 shrink-0 text-sm text-zinc-600 dark:text-zinc-400">
-              저자
-            </span>
-            <input
-              className={`${inputClass} flex-1`}
-              value={author}
-              onChange={(e) => setAuthor(e.target.value)}
-            />
-          </label>
+          <AuthorListEditor authors={authors} onChange={setAuthors} />
           <label className="flex items-center gap-4">
             <span className="w-24 shrink-0 text-sm text-zinc-600 dark:text-zinc-400">
               출판사
@@ -177,8 +170,8 @@ export default function MaterialForm() {
             </span>
             <input
               className={`${inputClass} flex-1`}
-              value={langauge}
-              onChange={(e) => setLangauge(e.target.value)}
+              value={language}
+              onChange={(e) => setLanguage(e.target.value)}
             />
           </label>
           <label className="flex items-center gap-4">

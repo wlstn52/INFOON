@@ -1,5 +1,11 @@
 // Temporary client-side material store until Supabase is wired in (6~8차시).
 
+export type Author = {
+  familyName: string; // 성
+  middleName?: string; // 미들 네임
+  givenName: string; // 이름
+};
+
 export type Material = {
   id: string;
   projectName: string;
@@ -10,11 +16,11 @@ export type Material = {
   description: string;
   createdAt: string; // YYYY-MM-DD
   // 인용 생성을 위한 세부 사항 - 필요한 자료에만 선택적으로 입력
-  author?: string; // 저자
+  authors?: Author[]; // 저자 목록
   publisher?: string; // 출판사
   publish_date?: string; // 발표 날짜
   year?: string;  // 발표 년도
-  langauge?: string; // 언어
+  language?: string; // 언어
   url?: string; // url
   access_date?: string; // 원문 접근일
   organization?: string; // 기관
