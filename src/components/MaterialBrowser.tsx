@@ -13,6 +13,7 @@ import {
   formatCitation,
   type CitationStyle,
 } from "@/lib/citation";
+import MaterialForm from "@/components/MaterialForm";
 
 const SORT_OPTIONS = [
   { value: "latest", label: "최신순" },
@@ -35,6 +36,7 @@ export default function MaterialBrowser() {
   const [citationStyle, setCitationStyle] = useState<CitationStyle>("apa");
   const [openId, setOpenId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [copied, setCopied] = useState<{ id: string; ok: boolean } | null>(
     null,
   );
@@ -137,6 +139,19 @@ export default function MaterialBrowser() {
           {visible.map((m) => {
             const isOpen = openId === m.id;
             const citation = isOpen ? formatCitation(m, citationStyle) : "";
+            if (editingId === m.id) {
+              return (
+                <div
+                  key={m.id}
+                  className="rounded border border-[#1b4965] p-4"
+                >
+                  <MaterialForm
+                    material={m}
+                    onDone={() => setEditingId(null)}
+                  />
+                </div>
+              );
+            }
             return (
               <div
                 key={m.id}
@@ -161,6 +176,14 @@ export default function MaterialBrowser() {
                     className="rounded-full border border-zinc-300 px-3 py-1 text-xs text-zinc-600 transition-colors hover:border-[#1b4965] hover:text-[#1b4965] dark:border-zinc-700 dark:text-zinc-400"
                   >
                     {isOpen ? "− 인용 닫기" : "+ 인용"}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setEditingId(m.id)}
+                    className="rounded-full border border-zinc-300 px-3 py-1 text-xs text-zinc-600 transition-colors hover:border-[#1b4965] hover:text-[#1b4965] dark:border-zinc-700 dark:text-zinc-400"
+                  >
+                    수정
                   </button>
 
                   {confirmDeleteId === m.id ? (

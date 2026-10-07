@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useId, useMemo, useState, useSyncExternalStore } from "react";
 import {
   addMaterial,
   getServerSnapshot,
   getSnapshot,
   subscribe,
+  updateMaterial,
   type Author,
   type Material,
 } from "@/lib/materials";
@@ -16,7 +17,30 @@ const IMPORTANCE_OPTIONS = [1, 2, 3, 4, 5];
 const inputClass =
   "rounded border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900";
 
-export default function MaterialForm() {
+function hasDetails(m?: Material) {
+  return !!(
+    m &&
+    (m.authors?.length ||
+      m.publisher ||
+      m.publish_date ||
+      m.year ||
+      m.language ||
+      m.url ||
+      m.access_date ||
+      m.organization ||
+      m.identifier)
+  );
+}
+
+// material이 주어지면 수정 모드, 없으면 새 자료 등록 모드
+export default function MaterialForm({
+  material,
+  onDone,
+}: {
+  material?: Material;
+  onDone?: () => void;
+}) {
+  const uid = useId();
   const raw = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const materials: Material[] = JSON.parse(raw);
   const projectNames = useMemo(
@@ -28,22 +52,24 @@ export default function MaterialForm() {
     [materials],
   );
 
-  const [projectName, setProjectName] = useState("");
-  const [title, setTitle] = useState("");
-  const [type, setType] = useState("");
-  const [location, setLocation] = useState("");
-  const [importance, setImportance] = useState(3);
-  const [description, setDescription] = useState("");
-  const [showDetails, setShowDetails] = useState(false);
-  const [authors, setAuthors] = useState<Author[]>([]);
-  const [publisher, setPublisher] = useState("");
-  const [publishDate, setPublishDate] = useState("");
-  const [year, setYear] = useState("");
-  const [language, setLanguage] = useState("");
-  const [url, setUrl] = useState("");
-  const [accessDate, setAccessDate] = useState("");
-  const [organization, setOrganization] = useState("");
-  const [identifier, setIdentifier] = useState("");
+  const [projectName, setProjectName] = useState(material?.projectName ?? "");
+  const [title, setTitle] = useState(material?.title ?? "");
+  const [type, setType] = useState(material?.type ?? "");
+  const [location, setLocation] = useState(material?.location ?? "");
+  const [importance, setImportance] = useState(material?.importance ?? 3);
+  const [description, setDescription] = useState(material?.description ?? "");
+  const [showDetails, setShowDetails] = useState(hasDetails(material));
+  const [authors, setAuthors] = useState<Author[]>(material?.authors ?? []);
+  const [publisher, setPublisher] = useState(material?.publisher ?? "");
+  const [publishDate, setPublishDate] = useState(material?.publish_date ?? "");
+  const [year, setYear] = useState(material?.year ?? "");
+  const [language, setLanguage] = useState(material?.language ?? "");
+  const [url, setUrl] = useState(material?.url ?? "");
+  const [accessDate, setAccessDate] = useState(material?.access_date ?? "");
+  const [organization, setOrganization] = useState(
+    material?.organization ?? "",
+  );
+  const [identifier, setIdentifier] = useState(material?.identifier ?? "");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
@@ -54,7 +80,7 @@ export default function MaterialForm() {
       setError("프로젝트, 자료명, 자료 종류는 필수 입력 항목입니다.");
       return;
     }
-    addMaterial({
+    const data = {
       projectName,
       title,
       type,
@@ -70,7 +96,13 @@ export default function MaterialForm() {
       access_date: accessDate || undefined,
       organization: organization || undefined,
       identifier: identifier || undefined,
-    });
+    };
+    if (material) {
+      updateMaterial(material.id, data);
+      onDone?.();
+      return;
+    }
+    addMaterial(data);
     setProjectName("");
     setTitle("");
     setType("");
@@ -91,18 +123,21 @@ export default function MaterialForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3 p-5">
+    <form
+      onSubmit={handleSubmit}
+      className={`flex flex-col gap-3 ${material ? "" : "p-5"}`}
+    >
       <label className="flex items-center gap-4">
         <span className="w-24 shrink-0 text-sm text-zinc-600 dark:text-zinc-400">
           프로젝트
         </span>
         <input
           className={`${inputClass} flex-1`}
-          list="project-options"
+          list={`${uid}-project`}
           value={projectName}
           onChange={(e) => setProjectName(e.target.value)}
         />
-        <datalist id="project-options">
+        <datalist id={`${uid}-project`}>
           {projectNames.map((p) => (
             <option key={p} value={p} />
           ))}
@@ -224,11 +259,11 @@ export default function MaterialForm() {
         </span>
         <input
           className={`${inputClass} flex-1`}
-          list="type-options"
+          list={`${uid}-type`}
           value={type}
           onChange={(e) => setType(e.target.value)}
         />
-        <datalist id="type-options">
+        <datalist id={`${uid}-type`}>
           {typeNames.map((t) => (
             <option key={t} value={t} />
           ))}
@@ -277,12 +312,23 @@ export default function MaterialForm() {
       {error && <p className="text-sm text-red-600">{error}</p>}
       {message && <p className="text-sm text-emerald-600">{message}</p>}
 
-      <button
-        type="submit"
-        className="mt-2 self-start rounded-full bg-[#1b4965] px-5 py-2 font-medium text-white transition-colors hover:bg-[#163a52]"
-      >
-        등록
-      </button>
+      <div className="mt-2 flex items-center gap-2">
+        <button
+          type="submit"
+          className="rounded-full bg-[#1b4965] px-5 py-2 font-medium text-white transition-colors hover:bg-[#163a52]"
+        >
+          {material ? "저장" : "등록"}
+        </button>
+        {material && (
+          <button
+            type="button"
+            onClick={onDone}
+            className="rounded-full border border-zinc-300 px-5 py-2 text-sm text-zinc-600 dark:border-zinc-700 dark:text-zinc-400"
+          >
+            취소
+          </button>
+        )}
+      </div>
     </form>
   );
 }
