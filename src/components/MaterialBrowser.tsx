@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useSyncExternalStore } from "react";
 import {
+  deleteMaterial,
   getServerSnapshot,
   getSnapshot,
   subscribe,
@@ -33,6 +34,7 @@ export default function MaterialBrowser() {
   const [sort, setSort] = useState<SortValue>("latest");
   const [citationStyle, setCitationStyle] = useState<CitationStyle>("apa");
   const [openId, setOpenId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [copied, setCopied] = useState<{ id: string; ok: boolean } | null>(
     null,
   );
@@ -152,13 +154,48 @@ export default function MaterialBrowser() {
                   </p>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => setOpenId(isOpen ? null : m.id)}
-                  className="self-start rounded-full border border-zinc-300 px-3 py-1 text-xs text-zinc-600 transition-colors hover:border-[#1b4965] hover:text-[#1b4965] dark:border-zinc-700 dark:text-zinc-400"
-                >
-                  {isOpen ? "− 인용 닫기" : "+ 인용"}
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setOpenId(isOpen ? null : m.id)}
+                    className="rounded-full border border-zinc-300 px-3 py-1 text-xs text-zinc-600 transition-colors hover:border-[#1b4965] hover:text-[#1b4965] dark:border-zinc-700 dark:text-zinc-400"
+                  >
+                    {isOpen ? "− 인용 닫기" : "+ 인용"}
+                  </button>
+
+                  {confirmDeleteId === m.id ? (
+                    <>
+                      <span className="text-xs text-red-600">
+                        정말 삭제할까요?
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          deleteMaterial(m.id);
+                          setConfirmDeleteId(null);
+                        }}
+                        className="rounded-full bg-red-600 px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-red-700"
+                      >
+                        삭제
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmDeleteId(null)}
+                        className="rounded-full border border-zinc-300 px-3 py-1 text-xs text-zinc-600 dark:border-zinc-700 dark:text-zinc-400"
+                      >
+                        취소
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDeleteId(m.id)}
+                      className="rounded-full border border-zinc-300 px-3 py-1 text-xs text-zinc-600 transition-colors hover:border-red-600 hover:text-red-600 dark:border-zinc-700 dark:text-zinc-400"
+                    >
+                      삭제
+                    </button>
+                  )}
+                </div>
 
                 {isOpen && (
                   <div className="flex flex-col gap-2 rounded bg-zinc-100 p-3 dark:bg-zinc-800">

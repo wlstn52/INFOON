@@ -108,3 +108,12 @@ export function addMaterial(material: Omit<Material, "id" | "createdAt">) {
   localStorage.setItem(MATERIALS_KEY, JSON.stringify(materials));
   emitChange();
 }
+
+export function deleteMaterial(id: string) {
+  const materials = JSON.parse(getSnapshot()) as Material[];
+  localStorage.setItem(
+    MATERIALS_KEY,
+    JSON.stringify(materials.filter((m) => m.id !== id)),
+  );
+  emitChange();
+}
