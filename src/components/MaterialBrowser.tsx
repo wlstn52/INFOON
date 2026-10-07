@@ -7,6 +7,11 @@ import {
   subscribe,
   type Material,
 } from "@/lib/materials";
+import {
+  CITATION_STYLES,
+  formatCitation,
+  type CitationStyle,
+} from "@/lib/citation";
 
 const SORT_OPTIONS = [
   { value: "latest", label: "최신순" },
@@ -26,6 +31,22 @@ export default function MaterialBrowser() {
   const [project, setProject] = useState("전체");
   const [type, setType] = useState("전체");
   const [sort, setSort] = useState<SortValue>("latest");
+  const [citationStyle, setCitationStyle] = useState<CitationStyle>("apa");
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [copied, setCopied] = useState<{ id: string; ok: boolean } | null>(
+    null,
+  );
+
+  async function handleCopy(id: string, text: string) {
+    let ok = true;
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      ok = false;
+    }
+    setCopied({ id, ok });
+    setTimeout(() => setCopied((c) => (c?.id === id ? null : c)), 2000);
+  }
 
   const projects = useMemo(
     () => ["전체", ...new Set(materials.map((m) => m.projectName))],
@@ -89,6 +110,20 @@ export default function MaterialBrowser() {
             </option>
           ))}
         </select>
+        <label className="ml-auto flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+          인용 양식
+          <select
+            className={selectClass}
+            value={citationStyle}
+            onChange={(e) => setCitationStyle(e.target.value as CitationStyle)}
+          >
+            {CITATION_STYLES.map((s) => (
+              <option key={s.value} value={s.value}>
+                {s.label}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
 
       {visible.length === 0 ? (
@@ -97,22 +132,60 @@ export default function MaterialBrowser() {
         </p>
       ) : (
         <div className="flex flex-col gap-2">
-          {visible.map((m) => (
-            <div
-              key={m.id}
-              className="flex flex-col gap-2 rounded border border-zinc-200 p-3 sm:flex-row sm:items-center sm:justify-between dark:border-zinc-800"
-            >
-              <div>
-                <p className="font-medium">{m.title}</p>
-                <p className="text-xs text-zinc-500">
-                  {m.projectName} · {m.type} · {m.location}
-                </p>
+          {visible.map((m) => {
+            const isOpen = openId === m.id;
+            const citation = isOpen ? formatCitation(m, citationStyle) : "";
+            return (
+              <div
+                key={m.id}
+                className="flex flex-col gap-2 rounded border border-zinc-200 p-3 dark:border-zinc-800"
+              >
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="font-medium">{m.title}</p>
+                    <p className="text-xs text-zinc-500">
+                      {m.projectName} · {m.type} · {m.location}
+                    </p>
+                  </div>
+                  <p className="text-sm text-zinc-600 sm:max-w-xs sm:text-right dark:text-zinc-400">
+                    {m.description}
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setOpenId(isOpen ? null : m.id)}
+                  className="self-start rounded-full border border-zinc-300 px-3 py-1 text-xs text-zinc-600 transition-colors hover:border-[#1b4965] hover:text-[#1b4965] dark:border-zinc-700 dark:text-zinc-400"
+                >
+                  {isOpen ? "− 인용 닫기" : "+ 인용"}
+                </button>
+
+                {isOpen && (
+                  <div className="flex flex-col gap-2 rounded bg-zinc-100 p-3 dark:bg-zinc-800">
+                    <p className="break-words text-sm">{citation}</p>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => handleCopy(m.id, citation)}
+                        className="rounded-full bg-[#1b4965] px-4 py-1 text-xs font-medium text-white transition-colors hover:bg-[#163a52]"
+                      >
+                        복사
+                      </button>
+                      {copied?.id === m.id && (
+                        <span
+                          className={`text-xs ${copied.ok ? "text-emerald-600" : "text-red-600"}`}
+                        >
+                          {copied.ok
+                            ? "복사되었습니다."
+                            : "복사에 실패했습니다. 직접 선택해서 복사해 주세요."}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
-              <p className="text-sm text-zinc-600 sm:max-w-xs sm:text-right dark:text-zinc-400">
-                {m.description}
-              </p>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
