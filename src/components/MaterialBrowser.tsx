@@ -1,12 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState, useSyncExternalStore } from "react";
 import {
   deleteMaterial,
   getServerSnapshot,
   getSnapshot,
   subscribe,
-  type Material,
 } from "@/lib/materials";
 import {
   CITATION_STYLES,
@@ -27,8 +27,11 @@ const selectClass =
   "rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900";
 
 export default function MaterialBrowser() {
-  const raw = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
-  const materials: Material[] = JSON.parse(raw);
+  const { status, materials } = useSyncExternalStore(
+    subscribe,
+    getSnapshot,
+    getServerSnapshot,
+  );
 
   const [project, setProject] = useState("전체");
   const [type, setType] = useState("전체");
@@ -40,6 +43,19 @@ export default function MaterialBrowser() {
   const [copied, setCopied] = useState<{ id: string; ok: boolean } | null>(
     null,
   );
+  const [deleteError, setDeleteError] = useState("");
+
+  async function handleDelete(id: string) {
+    setDeleteError("");
+    try {
+      await deleteMaterial(id);
+      setConfirmDeleteId(null);
+    } catch (err) {
+      setDeleteError(
+        err instanceof Error ? err.message : "삭제에 실패했습니다.",
+      );
+    }
+  }
 
   async function handleCopy(id: string, text: string) {
     let ok = true;
@@ -130,9 +146,29 @@ export default function MaterialBrowser() {
         </label>
       </div>
 
-      {visible.length === 0 ? (
+      {deleteError && <p className="text-sm text-red-600">{deleteError}</p>}
+
+      {status === "loading" ? (
         <p className="py-6 text-center text-sm text-zinc-500">
-          조건에 맞는 자료가 없습니다.
+          자료를 불러오는 중...
+        </p>
+      ) : status === "unauthenticated" ? (
+        <p className="py-6 text-center text-sm text-zinc-500">
+          자료를 보려면{" "}
+          <Link href="/login" className="font-medium text-[#1b4965]">
+            로그인
+          </Link>
+          해 주세요.
+        </p>
+      ) : status === "error" ? (
+        <p className="py-6 text-center text-sm text-red-600">
+          자료를 불러오지 못했습니다. 새로고침 후 다시 시도해 주세요.
+        </p>
+      ) : visible.length === 0 ? (
+        <p className="py-6 text-center text-sm text-zinc-500">
+          {materials.length === 0
+            ? "등록된 자료가 없습니다. 위에서 새 자료를 등록해 보세요."
+            : "조건에 맞는 자료가 없습니다."}
         </p>
       ) : (
         <div className="flex flex-col gap-2">
@@ -193,10 +229,7 @@ export default function MaterialBrowser() {
                       </span>
                       <button
                         type="button"
-                        onClick={() => {
-                          deleteMaterial(m.id);
-                          setConfirmDeleteId(null);
-                        }}
+                        onClick={() => handleDelete(m.id)}
                         className="rounded-full bg-red-600 px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-red-700"
                       >
                         삭제

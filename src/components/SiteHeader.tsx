@@ -6,22 +6,20 @@ import { useSyncExternalStore } from "react";
 import {
   getServerSnapshot,
   getSnapshot,
-  logout,
+  signOut,
   subscribe,
-  type Session,
-} from "@/lib/mockAuth";
+} from "@/lib/auth";
 
 export default function SiteHeader() {
   const router = useRouter();
-  const sessionRaw = useSyncExternalStore(
+  const { loading, user: session } = useSyncExternalStore(
     subscribe,
     getSnapshot,
     getServerSnapshot,
   );
-  const session: Session | null = sessionRaw ? JSON.parse(sessionRaw) : null;
 
-  function handleLogout() {
-    logout();
+  async function handleLogout() {
+    await signOut();
     router.push("/");
   }
 
@@ -43,7 +41,7 @@ export default function SiteHeader() {
           <a href="#new-material" className="text-zinc-600 hover:text-[#1b4965] dark:text-zinc-400">
             새 자료 등록
           </a>
-          {session ? (
+          {loading ? null : session ? (
             <div className="flex items-center gap-3">
               <span className="text-zinc-600 dark:text-zinc-400">
                 {session.name}님

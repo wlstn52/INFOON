@@ -41,8 +41,11 @@ export default function MaterialForm({
   onDone?: () => void;
 }) {
   const uid = useId();
-  const raw = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
-  const materials: Material[] = JSON.parse(raw);
+  const { materials } = useSyncExternalStore(
+    subscribe,
+    getSnapshot,
+    getServerSnapshot,
+  );
   const projectNames = useMemo(
     () => [...new Set(materials.map((m) => m.projectName))],
     [materials],
@@ -72,8 +75,9 @@ export default function MaterialForm({
   const [identifier, setIdentifier] = useState(material?.identifier ?? "");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!projectName || !title || !type) {
       setMessage("");
@@ -97,12 +101,22 @@ export default function MaterialForm({
       organization: organization || undefined,
       identifier: identifier || undefined,
     };
-    if (material) {
-      updateMaterial(material.id, data);
-      onDone?.();
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      if (material) {
+        await updateMaterial(material.id, data);
+        onDone?.();
+        return;
+      }
+      await addMaterial(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "저장에 실패했습니다.");
       return;
+    } finally {
+      setBusy(false);
     }
-    addMaterial(data);
     setProjectName("");
     setTitle("");
     setType("");
@@ -315,9 +329,10 @@ export default function MaterialForm({
       <div className="mt-2 flex items-center gap-2">
         <button
           type="submit"
-          className="rounded-full bg-[#1b4965] px-5 py-2 font-medium text-white transition-colors hover:bg-[#163a52]"
+          disabled={busy}
+          className="rounded-full bg-[#1b4965] px-5 py-2 font-medium text-white transition-colors hover:bg-[#163a52] disabled:opacity-60"
         >
-          {material ? "저장" : "등록"}
+          {busy ? "저장 중..." : material ? "저장" : "등록"}
         </button>
         {material && (
           <button

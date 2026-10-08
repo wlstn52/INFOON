@@ -3,19 +3,24 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { signup } from "@/lib/mockAuth";
+import { signUp } from "@/lib/auth";
+
+const inputClass =
+  "rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900";
 
 export default function SignupPage() {
   const router = useRouter();
-  const [id, setId] = useState("");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
-  const [name, setName] = useState("");
   const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [sentTo, setSentTo] = useState("");
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!id || !password || !passwordConfirm || !name) {
+    if (!name || !email || !password || !passwordConfirm) {
       setError("모든 항목을 입력해 주세요.");
       return;
     }
@@ -23,12 +28,42 @@ export default function SignupPage() {
       setError("비밀번호가 일치하지 않습니다.");
       return;
     }
+    if (password.length < 8) {
+      setError("비밀번호는 8자 이상이어야 합니다.");
+      return;
+    }
+    setBusy(true);
+    setError("");
     try {
-      signup(id, password, name);
-      router.push("/");
+      const { needsConfirmation } = await signUp(email, password, name);
+      if (needsConfirmation) {
+        setSentTo(email);
+        setBusy(false);
+      } else {
+        router.push("/");
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "회원가입에 실패했습니다.");
+      setBusy(false);
     }
+  }
+
+  if (sentTo) {
+    return (
+      <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center gap-4 px-6 py-10 text-center">
+        <h1 className="text-2xl font-bold tracking-tight text-[#1b4965]">
+          메일을 확인해 주세요
+        </h1>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          <strong>{sentTo}</strong>로 인증 메일을 보냈습니다. 메일의 링크를
+          누르면 가입이 완료됩니다. 메일이 오지 않으면 이미 가입된 이메일일 수
+          있으니 로그인해 보세요.
+        </p>
+        <Link href="/login" className="font-medium text-[#1b4965]">
+          로그인으로 이동
+        </Link>
+      </main>
+    );
   }
 
   return (
@@ -43,26 +78,27 @@ export default function SignupPage() {
         <label className="flex flex-col gap-1 text-sm">
           이름
           <input
-            className="rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+            className={inputClass}
             value={name}
             onChange={(e) => setName(e.target.value)}
             autoComplete="name"
           />
         </label>
         <label className="flex flex-col gap-1 text-sm">
-          아이디
+          이메일
           <input
-            className="rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
-            value={id}
-            onChange={(e) => setId(e.target.value)}
-            autoComplete="username"
+            type="email"
+            className={inputClass}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="email"
           />
         </label>
         <label className="flex flex-col gap-1 text-sm">
-          비밀번호
+          비밀번호 (8자 이상)
           <input
             type="password"
-            className="rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+            className={inputClass}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             autoComplete="new-password"
@@ -72,7 +108,7 @@ export default function SignupPage() {
           비밀번호 확인
           <input
             type="password"
-            className="rounded border border-zinc-300 px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
+            className={inputClass}
             value={passwordConfirm}
             onChange={(e) => setPasswordConfirm(e.target.value)}
             autoComplete="new-password"
@@ -81,9 +117,10 @@ export default function SignupPage() {
         {error && <p className="text-sm text-red-600">{error}</p>}
         <button
           type="submit"
-          className="mt-2 rounded-full bg-[#1b4965] px-4 py-2 font-medium text-white transition-colors hover:bg-[#163a52]"
+          disabled={busy}
+          className="mt-2 rounded-full bg-[#1b4965] px-4 py-2 font-medium text-white transition-colors hover:bg-[#163a52] disabled:opacity-60"
         >
-          회원가입
+          {busy ? "가입 중..." : "회원가입"}
         </button>
         <p className="text-center text-sm text-zinc-500">
           이미 계정이 있으신가요?{" "}

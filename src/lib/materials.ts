@@ -1,5 +1,3 @@
-// Temporary client-side material store until Supabase is wired in (6~8차시).
-
 export type Author = {
   familyName: string; // 성
   middleName?: string; // 미들 네임
@@ -19,7 +17,7 @@ export type Material = {
   authors?: Author[]; // 저자 목록
   publisher?: string; // 출판사
   publish_date?: string; // 발표 날짜
-  year?: string;  // 발표 년도
+  year?: string; // 발표 년도
   language?: string; // 언어
   url?: string; // url
   access_date?: string; // 원문 접근일
@@ -27,105 +25,95 @@ export type Material = {
   identifier?: string; // 식별자 ex) DOI, ISBN
 };
 
-const MATERIALS_KEY = "infoon_materials";
+export type MaterialInput = Omit<Material, "id" | "createdAt">;
 
-const SAMPLE_MATERIALS: Material[] = [
-  {
-    id: "m1",
-    projectName: "졸업 논문",
-    title: "딥러닝 기반 자연어 처리 최신 동향",
-    type: "논문",
-    location: "Google Drive/논문/2026",
-    importance: 5,
-    description: "최신 트랜스포머 구조를 정리한 리뷰 논문",
-    createdAt: "2026-03-02",
-  },
-  {
-    id: "m2",
-    projectName: "졸업 논문",
-    title: "국내 교육 데이터 활용 사례 보고서",
-    type: "보고서",
-    location: "로컬/문서/보고서",
-    importance: 3,
-    description: "공공 교육 데이터셋을 활용한 국내 사례 정리",
-    createdAt: "2026-02-14",
-  },
-  {
-    id: "m3",
-    projectName: "동아리 발표 자료",
-    title: "생성형 AI 교육 활용 기사 모음",
-    type: "기사",
-    location: "노션/자료실",
-    importance: 2,
-    description: "생성형 AI를 수업에 활용한 해외 사례 기사",
-    createdAt: "2026-01-20",
-  },
-  {
-    id: "m4",
-    projectName: "동아리 발표 자료",
-    title: "인용 스타일 가이드",
-    type: "단행본",
-    location: "책장/참고서적",
-    importance: 4,
-    description: "APA/MLA 인용 형식을 정리한 참고서",
-    createdAt: "2026-03-10",
-  },
-];
+export type MaterialsState = {
+  status: "loading" | "ready" | "unauthenticated" | "error";
+  materials: Material[];
+};
 
-function seedIfEmpty() {
-  if (localStorage.getItem(MATERIALS_KEY) === null) {
-    localStorage.setItem(MATERIALS_KEY, JSON.stringify(SAMPLE_MATERIALS));
-  }
-}
+const INITIAL_STATE: MaterialsState = { status: "loading", materials: [] };
 
+let state = INITIAL_STATE;
+let started = false;
 const listeners = new Set<() => void>();
 
-function emitChange() {
+function setState(next: MaterialsState) {
+  state = next;
   listeners.forEach((listener) => listener());
+}
+
+async function load() {
+  try {
+    const res = await fetch("/api/materials");
+    if (res.status === 401) {
+      setState({ status: "unauthenticated", materials: [] });
+      return;
+    }
+    if (!res.ok) throw new Error();
+    setState({ status: "ready", materials: await res.json() });
+  } catch {
+    setState({ status: "error", materials: [] });
+  }
 }
 
 export function subscribe(listener: () => void) {
   listeners.add(listener);
-  return () => listeners.delete(listener);
+  if (!started) {
+    started = true;
+    load();
+  }
+  return () => {
+    listeners.delete(listener);
+  };
 }
 
-export function getSnapshot(): string {
-  seedIfEmpty();
-  return localStorage.getItem(MATERIALS_KEY) ?? "[]";
+export function getSnapshot(): MaterialsState {
+  return state;
 }
 
-export function getServerSnapshot(): string {
-  return "[]";
+export function getServerSnapshot(): MaterialsState {
+  return INITIAL_STATE;
 }
 
-export function addMaterial(material: Omit<Material, "id" | "createdAt">) {
-  const materials = JSON.parse(getSnapshot()) as Material[];
-  materials.push({
-    ...material,
-    id: crypto.randomUUID(),
-    createdAt: new Date().toISOString().slice(0, 10),
+// 로그인/로그아웃으로 사용자가 바뀌었을 때 목록을 다시 불러온다
+export function resetMaterials() {
+  setState(INITIAL_STATE);
+  load();
+}
+
+async function send(url: string, method: string, body?: MaterialInput) {
+  const res = await fetch(url, {
+    method,
+    headers: body ? { "Content-Type": "application/json" } : undefined,
+    body: body ? JSON.stringify(body) : undefined,
   });
-  localStorage.setItem(MATERIALS_KEY, JSON.stringify(materials));
-  emitChange();
+  if (!res.ok) {
+    const data = await res.json().catch(() => null);
+    throw new Error(data?.error ?? "요청에 실패했습니다.");
+  }
+  return res;
 }
 
-export function updateMaterial(
-  id: string,
-  data: Omit<Material, "id" | "createdAt">,
-) {
-  const materials = JSON.parse(getSnapshot()) as Material[];
-  const next = materials.map((m) =>
-    m.id === id ? { ...data, id: m.id, createdAt: m.createdAt } : m,
-  );
-  localStorage.setItem(MATERIALS_KEY, JSON.stringify(next));
-  emitChange();
+export async function addMaterial(input: MaterialInput) {
+  const res = await send("/api/materials", "POST", input);
+  const created: Material = await res.json();
+  setState({ ...state, materials: [created, ...state.materials] });
 }
 
-export function deleteMaterial(id: string) {
-  const materials = JSON.parse(getSnapshot()) as Material[];
-  localStorage.setItem(
-    MATERIALS_KEY,
-    JSON.stringify(materials.filter((m) => m.id !== id)),
-  );
-  emitChange();
+export async function updateMaterial(id: string, input: MaterialInput) {
+  const res = await send(`/api/materials/${id}`, "PUT", input);
+  const updated: Material = await res.json();
+  setState({
+    ...state,
+    materials: state.materials.map((m) => (m.id === id ? updated : m)),
+  });
+}
+
+export async function deleteMaterial(id: string) {
+  await send(`/api/materials/${id}`, "DELETE");
+  setState({
+    ...state,
+    materials: state.materials.filter((m) => m.id !== id),
+  });
 }
