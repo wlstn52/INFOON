@@ -2,12 +2,11 @@ import {
   findOrCreateProject,
   getAuthedClient,
   inputToColumns,
+  isUuid,
   MATERIAL_SELECT,
   parseMaterialInput,
   rowToMaterial,
 } from "@/lib/materialDb";
-
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function PUT(
   request: Request,
@@ -17,7 +16,7 @@ export async function PUT(
   if ("response" in auth) return auth.response;
 
   const { id } = await ctx.params;
-  if (!UUID.test(id)) {
+  if (!isUuid(id)) {
     return Response.json({ error: "잘못된 자료 ID입니다." }, { status: 400 });
   }
 
@@ -57,7 +56,7 @@ export async function DELETE(
   if ("response" in auth) return auth.response;
 
   const { id } = await ctx.params;
-  if (!UUID.test(id)) {
+  if (!isUuid(id)) {
     return Response.json({ error: "잘못된 자료 ID입니다." }, { status: 400 });
   }
 

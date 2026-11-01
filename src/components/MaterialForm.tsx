@@ -10,6 +10,7 @@ import {
   type Author,
   type Material,
 } from "@/lib/materials";
+import type { LookupResult } from "@/lib/lookup";
 import AuthorListEditor from "@/components/AuthorListEditor";
 
 const IMPORTANCE_OPTIONS = [1, 2, 3, 4, 5];
@@ -28,7 +29,11 @@ function hasDetails(m?: Material) {
       m.url ||
       m.access_date ||
       m.organization ||
-      m.identifier)
+      m.identifier ||
+      m.journal ||
+      m.volume ||
+      m.issue ||
+      m.pages)
   );
 }
 
@@ -73,9 +78,88 @@ export default function MaterialForm({
     material?.organization ?? "",
   );
   const [identifier, setIdentifier] = useState(material?.identifier ?? "");
+  const [journal, setJournal] = useState(material?.journal ?? "");
+  const [volume, setVolume] = useState(material?.volume ?? "");
+  const [issue, setIssue] = useState(material?.issue ?? "");
+  const [pages, setPages] = useState(material?.pages ?? "");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [lookupId, setLookupId] = useState("");
+  const [lookupBusy, setLookupBusy] = useState(false);
+  const [lookupNote, setLookupNote] = useState<{
+    ok: boolean;
+    lines: string[];
+  } | null>(null);
+
+  function applyLookup({ fields, warnings }: LookupResult) {
+    let filled = 0;
+    const fill = (
+      current: string,
+      next: string | undefined,
+      set: (v: string) => void,
+    ) => {
+      if (!current.trim() && next) {
+        set(next);
+        filled++;
+      }
+    };
+    fill(title, fields.title, setTitle);
+    fill(type, fields.type, setType);
+    fill(publisher, fields.publisher, setPublisher);
+    fill(publishDate, fields.publish_date, setPublishDate);
+    fill(year, fields.year, setYear);
+    fill(language, fields.language, setLanguage);
+    fill(url, fields.url, setUrl);
+    fill(organization, fields.organization, setOrganization);
+    fill(identifier, fields.identifier, setIdentifier);
+    fill(journal, fields.journal, setJournal);
+    fill(volume, fields.volume, setVolume);
+    fill(issue, fields.issue, setIssue);
+    fill(pages, fields.pages, setPages);
+    if (authors.length === 0 && fields.authors?.length) {
+      setAuthors(fields.authors);
+      filled++;
+    }
+    if (filled > 0) setShowDetails(true);
+    setLookupNote({
+      ok: true,
+      lines: [
+        filled > 0
+          ? `${filled}개 항목을 채웠습니다. 내용을 확인한 뒤 저장해 주세요.`
+          : "새로 채울 빈 항목이 없습니다. 이미 입력한 값은 바꾸지 않습니다.",
+        ...warnings,
+      ],
+    });
+  }
+
+  async function handleLookup() {
+    if (!lookupId.trim()) {
+      setLookupNote({ ok: false, lines: ["DOI 또는 ISBN을 입력해 주세요."] });
+      return;
+    }
+    setLookupBusy(true);
+    setLookupNote(null);
+    try {
+      const res = await fetch(
+        `/api/lookup?id=${encodeURIComponent(lookupId.trim())}`,
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error);
+      applyLookup(data);
+    } catch (err) {
+      setLookupNote({
+        ok: false,
+        lines: [
+          err instanceof Error && err.message
+            ? err.message
+            : "정보를 가져오지 못했습니다. 직접 입력해 주세요.",
+        ],
+      });
+    } finally {
+      setLookupBusy(false);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -100,6 +184,10 @@ export default function MaterialForm({
       access_date: accessDate || undefined,
       organization: organization || undefined,
       identifier: identifier || undefined,
+      journal: journal || undefined,
+      volume: volume || undefined,
+      issue: issue || undefined,
+      pages: pages || undefined,
     };
     setBusy(true);
     setError("");
@@ -132,6 +220,12 @@ export default function MaterialForm({
     setAccessDate("");
     setOrganization("");
     setIdentifier("");
+    setJournal("");
+    setVolume("");
+    setIssue("");
+    setPages("");
+    setLookupId("");
+    setLookupNote(null);
     setError("");
     setMessage("자료가 등록되었습니다.");
   }
@@ -141,6 +235,40 @@ export default function MaterialForm({
       onSubmit={handleSubmit}
       className={`flex flex-col gap-3 ${material ? "" : "p-5"}`}
     >
+      <div className="flex flex-col gap-2 rounded bg-zinc-100 p-3 dark:bg-zinc-800">
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            className={`${inputClass} min-w-48 flex-1`}
+            placeholder="DOI 또는 ISBN 입력 (예: 10.1038/nature14539)"
+            aria-label="DOI 또는 ISBN"
+            value={lookupId}
+            onChange={(e) => setLookupId(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                handleLookup();
+              }
+            }}
+          />
+          <button
+            type="button"
+            onClick={handleLookup}
+            disabled={lookupBusy}
+            className="rounded-full border border-[#1b4965] px-4 py-1.5 text-sm font-medium text-[#1b4965] transition-colors hover:bg-[#1b4965] hover:text-white disabled:opacity-60 dark:border-zinc-500 dark:text-zinc-200"
+          >
+            {lookupBusy ? "찾는 중..." : "자동 입력"}
+          </button>
+        </div>
+        {lookupNote?.lines.map((line) => (
+          <p
+            key={line}
+            className={`text-xs ${lookupNote.ok ? "text-zinc-600 dark:text-zinc-400" : "text-red-600"}`}
+          >
+            {line}
+          </p>
+        ))}
+      </div>
+
       <label className="flex items-center gap-4">
         <span className="w-24 shrink-0 text-sm text-zinc-600 dark:text-zinc-400">
           프로젝트
@@ -264,6 +392,45 @@ export default function MaterialForm({
               onChange={(e) => setIdentifier(e.target.value)}
             />
           </label>
+          <label className="flex items-center gap-4">
+            <span className="w-24 shrink-0 text-sm text-zinc-600 dark:text-zinc-400">
+              학술지명
+            </span>
+            <input
+              className={`${inputClass} flex-1`}
+              placeholder="논문일 때 입력"
+              value={journal}
+              onChange={(e) => setJournal(e.target.value)}
+            />
+          </label>
+          <div className="flex items-center gap-4">
+            <span className="w-24 shrink-0 text-sm text-zinc-600 dark:text-zinc-400">
+              권 / 호 / 쪽
+            </span>
+            <div className="flex min-w-0 flex-1 gap-2">
+              <input
+                className={`${inputClass} w-0 flex-1`}
+                placeholder="권"
+                aria-label="권"
+                value={volume}
+                onChange={(e) => setVolume(e.target.value)}
+              />
+              <input
+                className={`${inputClass} w-0 flex-1`}
+                placeholder="호"
+                aria-label="호"
+                value={issue}
+                onChange={(e) => setIssue(e.target.value)}
+              />
+              <input
+                className={`${inputClass} w-0 flex-1`}
+                placeholder="쪽"
+                aria-label="쪽"
+                value={pages}
+                onChange={(e) => setPages(e.target.value)}
+              />
+            </div>
+          </div>
         </div>
       )}
 

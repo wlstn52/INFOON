@@ -47,8 +47,10 @@ function period(s: string) {
   return /[.?!]$/.test(s) ? s : `${s}.`;
 }
 
+const DOI = /10\.\d{4,9}\/\S+/;
+
 function doiUrl(identifier?: string) {
-  const m = identifier?.match(/10\.\d{4,9}\/\S+/);
+  const m = identifier?.match(DOI);
   return m ? `https://doi.org/${m[0]}` : undefined;
 }
 
@@ -141,15 +143,34 @@ function prepare(m: Material) {
     link: doiUrl(m.identifier) ?? (m.url?.trim() || undefined),
     date: parseDate(m.publish_date, m.year),
     accessed: m.access_date?.trim() ? parseDate(m.access_date) : undefined,
+    journal: m.journal?.trim() || undefined,
+    volume: m.volume?.trim() || undefined,
+    issue: m.issue?.trim() || undefined,
+    pages: m.pages?.trim() || undefined,
   };
+}
+
+function quoted(title: string, ending: "." | ",") {
+  return /[.?!]$/.test(title) ? `"${title}"` : `"${title}${ending}"`;
 }
 
 function apa(m: Material) {
   const p = prepare(m);
+  const author = p.authors.length ? apaAuthors(p.authors) : p.byline;
+  if (p.journal) {
+    const issue = p.issue ? `(${p.issue})` : "";
+    const volume = p.volume || issue ? `${p.volume ?? ""}${issue}` : undefined;
+    const source = [p.journal, volume, p.pages].filter(Boolean).join(", ");
+    const year = `(${p.date.year ?? "n.d."}).`;
+    const parts = author
+      ? [period(author), year, period(p.title), period(source)]
+      : [period(p.title), year, period(source)];
+    if (p.link) parts.push(p.link);
+    return parts.join(" ");
+  }
   const d = hasFullDate(p.date)
     ? `${p.date.year}, ${MONTH_FULL[p.date.month - 1]} ${p.date.day}`
     : (p.date.year ?? "n.d.");
-  const author = p.authors.length ? apaAuthors(p.authors) : p.byline;
   const parts = author
     ? [period(author), `(${d}).`, period(p.title)]
     : [period(p.title), `(${d}).`];
@@ -163,11 +184,21 @@ function mla(m: Material) {
   const parts: string[] = [];
   const author = p.authors.length ? mlaAuthors(p.authors) : undefined;
   if (author) parts.push(period(author));
-  parts.push(period(p.title));
+  parts.push(p.journal ? quoted(p.title, ".") : period(p.title));
   const date = hasFullDate(p.date)
     ? `${p.date.day} ${MONTH_MLA[p.date.month - 1]} ${p.date.year}`
     : p.date.year;
-  const container = [p.publisher ?? p.byline, date].filter(Boolean).join(", ");
+  const container = p.journal
+    ? [
+        p.journal,
+        p.volume && `vol. ${p.volume}`,
+        p.issue && `no. ${p.issue}`,
+        date,
+        p.pages && `pp. ${p.pages}`,
+      ]
+        .filter(Boolean)
+        .join(", ")
+    : [p.publisher ?? p.byline, date].filter(Boolean).join(", ");
   if (container) parts.push(period(container));
   if (p.link) parts.push(`${p.link}.`);
   if (p.accessed) {
@@ -185,11 +216,21 @@ function chicago(m: Material) {
   const parts: string[] = [];
   const author = p.authors.length ? chicagoAuthors(p.authors) : p.byline;
   if (author) parts.push(period(author));
-  parts.push(period(p.title));
-  const date = hasFullDate(p.date)
-    ? `${MONTH_FULL[p.date.month - 1]} ${p.date.day}, ${p.date.year}`
-    : (p.date.year ?? "n.d.");
-  parts.push(period([p.publisher, date].filter(Boolean).join(", ")));
+  if (p.journal) {
+    const issue = p.issue ? `, no. ${p.issue}` : "";
+    const volume = p.volume ? ` ${p.volume}` : "";
+    const pages = p.pages ? `: ${p.pages}` : "";
+    parts.push(quoted(p.title, "."));
+    parts.push(
+      `${p.journal}${volume}${issue} (${p.date.year ?? "n.d."})${pages}.`,
+    );
+  } else {
+    parts.push(period(p.title));
+    const date = hasFullDate(p.date)
+      ? `${MONTH_FULL[p.date.month - 1]} ${p.date.day}, ${p.date.year}`
+      : (p.date.year ?? "n.d.");
+    parts.push(period([p.publisher, date].filter(Boolean).join(", ")));
+  }
   if (p.accessed) {
     const a = p.accessed;
     const text = hasFullDate(a)
@@ -204,12 +245,23 @@ function chicago(m: Material) {
 function ieee(m: Material) {
   const p = prepare(m);
   const author = p.authors.length ? ieeeAuthors(p.authors) : p.byline;
-  const rest = [p.publisher, p.date.year].filter(Boolean).join(", ");
-  const title = /[.?!]$/.test(p.title)
-    ? `"${p.title}"`
-    : `"${p.title}${rest ? "," : "."}"`;
+  const rest = p.journal
+    ? [
+        p.journal,
+        p.volume && `vol. ${p.volume}`,
+        p.issue && `no. ${p.issue}`,
+        p.pages && `pp. ${p.pages}`,
+        p.date.year,
+      ]
+        .filter(Boolean)
+        .join(", ")
+    : [p.publisher, p.date.year].filter(Boolean).join(", ");
+  const title = quoted(p.title, rest ? "," : ".");
   let text = `${author ? `${author}, ` : ""}${title}${rest ? ` ${rest}.` : ""}`;
-  if (p.link) {
+  const doi = m.identifier?.match(DOI)?.[0];
+  if (p.journal && doi) {
+    text += ` doi: ${doi}.`;
+  } else if (p.link) {
     text += ` [Online]. Available: ${p.link}`;
     if (p.accessed) {
       const a = p.accessed;

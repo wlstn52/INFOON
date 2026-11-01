@@ -2,6 +2,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Author, Material, MaterialInput } from "@/lib/materials";
 import { createClient } from "@/lib/supabase/server";
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export function isUuid(value: string) {
+  return UUID.test(value);
+}
+
 class ValidationError extends Error {}
 
 function text(
@@ -84,6 +90,10 @@ export function parseMaterialInput(
         access_date: text(b, "access_date", 100),
         organization: text(b, "organization", 500),
         identifier: text(b, "identifier", 500),
+        journal: text(b, "journal", 500),
+        volume: text(b, "volume", 50),
+        issue: text(b, "issue", 50),
+        pages: text(b, "pages", 50),
       },
     };
   } catch (e) {
@@ -111,6 +121,10 @@ type Row = {
   access_date: string | null;
   organization: string | null;
   identifier: string | null;
+  journal: string | null;
+  volume: string | null;
+  issue: string | null;
+  pages: string | null;
   projects: { name: string } | null;
 };
 
@@ -133,6 +147,10 @@ export function rowToMaterial(row: Row): Material {
     access_date: row.access_date ?? undefined,
     organization: row.organization ?? undefined,
     identifier: row.identifier ?? undefined,
+    journal: row.journal ?? undefined,
+    volume: row.volume ?? undefined,
+    issue: row.issue ?? undefined,
+    pages: row.pages ?? undefined,
   };
 }
 
@@ -154,6 +172,10 @@ export function inputToColumns(input: MaterialInput, projectId: string) {
     access_date: input.access_date ?? null,
     organization: input.organization ?? null,
     identifier: input.identifier ?? null,
+    journal: input.journal ?? null,
+    volume: input.volume ?? null,
+    issue: input.issue ?? null,
+    pages: input.pages ?? null,
   };
 }
 

@@ -23,6 +23,10 @@ export type Material = {
   access_date?: string; // 원문 접근일
   organization?: string; // 기관
   identifier?: string; // 식별자 ex) DOI, ISBN
+  journal?: string; // 학술지명
+  volume?: string; // 권
+  issue?: string; // 호
+  pages?: string; // 쪽 ex) 436-444
 };
 
 export type MaterialInput = Omit<Material, "id" | "createdAt">;
