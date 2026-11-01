@@ -10,7 +10,9 @@ export default function LoginForm({ confirmFailed }: { confirmFailed: boolean })
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(
-    confirmFailed ? "이메일 인증에 실패했습니다. 다시 시도해 주세요." : "",
+    confirmFailed
+      ? "자동 로그인에 실패했습니다. 이메일 인증은 완료됐을 수 있으니 아래에서 로그인해 보세요."
+      : "",
   );
   const [busy, setBusy] = useState(false);
 

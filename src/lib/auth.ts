@@ -80,8 +80,14 @@ function messageFor(error: AuthError) {
     case "over_email_send_rate_limit":
     case "over_request_rate_limit":
       return "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.";
-    default:
-      return "요청에 실패했습니다. 잠시 후 다시 시도해 주세요.";
+    default: {
+      console.error("Supabase auth error", error);
+      // 서버에 연결하지 못한 경우 (프로젝트 일시정지, 네트워크 문제 등)
+      if (error.name === "AuthRetryableFetchError" || !error.status) {
+        return "인증 서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.";
+      }
+      return `요청에 실패했습니다. (${error.code ?? error.status})`;
+    }
   }
 }
 
