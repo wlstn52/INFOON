@@ -41,7 +41,7 @@ function BarGroup({ title, rows }: { title: string; rows: Row[] }) {
             <span className="flex min-w-0 items-center gap-1.5">
               {row.count > 0 && (
                 <span
-                  className="h-3 rounded-r bg-[#2a7ab0] dark:bg-[#4f9fd4]"
+                  className="h-3 rounded-r bg-[#2a7ab0] dark:bg-[#4896cb]"
                   style={{ width: `calc((100% - 2rem) * ${row.count / max})` }}
                 />
               )}

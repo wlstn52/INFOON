@@ -86,6 +86,11 @@ export function resetMaterials() {
   load();
 }
 
+// 화면을 비우지 않고 다시 불러온다 (프로젝트 이름 변경/삭제 후)
+export function refreshMaterials() {
+  return load();
+}
+
 async function send(url: string, method: string, body?: MaterialInput) {
   const res = await fetch(url, {
     method,

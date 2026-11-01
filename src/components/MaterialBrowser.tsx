@@ -18,6 +18,7 @@ import BibliographyPanel from "@/components/BibliographyPanel";
 import CitationPanel from "@/components/CitationPanel";
 import MaterialForm from "@/components/MaterialForm";
 import MaterialStats from "@/components/MaterialStats";
+import ProjectManager from "@/components/ProjectManager";
 import ShareControl from "@/components/ShareControl";
 
 const SORT_OPTIONS: { value: SortValue; label: string }[] = [
@@ -32,7 +33,7 @@ const selectClass =
 const toggleClass =
   "rounded-full border border-zinc-300 px-3 py-1 text-xs text-zinc-600 transition-colors hover:border-[#1b4965] hover:text-[#1b4965] dark:border-zinc-700 dark:text-zinc-400";
 
-type ToolPanel = "stats" | "bibliography" | null;
+type ToolPanel = "stats" | "bibliography" | "projects" | null;
 
 export default function MaterialBrowser() {
   const { status, materials } = useSyncExternalStore(
@@ -148,7 +149,7 @@ export default function MaterialBrowser() {
         </label>
       </div>
 
-      {status === "ready" && materials.length > 0 && (
+      {status === "ready" && (
         <>
           <div className="flex flex-wrap items-center gap-2">
             <span className="mr-1 text-sm text-zinc-600 dark:text-zinc-400">
@@ -156,31 +157,54 @@ export default function MaterialBrowser() {
               {visible.length !== materials.length &&
                 ` / 전체 ${materials.length}건`}
             </span>
+            {materials.length > 0 && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => toggleTool("stats")}
+                  className={toggleClass}
+                >
+                  {toolPanel === "stats" ? "− 통계 닫기" : "+ 통계"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => toggleTool("bibliography")}
+                  className={toggleClass}
+                >
+                  {toolPanel === "bibliography"
+                    ? "− 참고문헌 닫기"
+                    : "+ 참고문헌·내보내기"}
+                </button>
+              </>
+            )}
             <button
               type="button"
-              onClick={() => toggleTool("stats")}
+              onClick={() => toggleTool("projects")}
               className={toggleClass}
             >
-              {toolPanel === "stats" ? "− 통계 닫기" : "+ 통계"}
-            </button>
-            <button
-              type="button"
-              onClick={() => toggleTool("bibliography")}
-              className={toggleClass}
-            >
-              {toolPanel === "bibliography"
-                ? "− 참고문헌 닫기"
-                : "+ 참고문헌·내보내기"}
+              {toolPanel === "projects"
+                ? "− 프로젝트 관리 닫기"
+                : "+ 프로젝트 관리"}
             </button>
           </div>
-          {toolPanel === "stats" && (
+          {toolPanel === "stats" && materials.length > 0 && (
             <MaterialStats materials={visible} showProjects={project === ALL} />
           )}
-          {toolPanel === "bibliography" && (
+          {toolPanel === "bibliography" && materials.length > 0 && (
             <BibliographyPanel
               materials={visible}
               style={citationStyle}
               fileBase={project === ALL ? "INFOON" : `INFOON-${project}`}
+            />
+          )}
+          {toolPanel === "projects" && (
+            <ProjectManager
+              materials={materials}
+              onRenamed={(before, after) =>
+                setSelectedProject((current) =>
+                  current === before ? after : current,
+                )
+              }
             />
           )}
         </>

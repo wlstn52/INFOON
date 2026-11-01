@@ -6,7 +6,7 @@ export async function GET() {
 
   const { data, error } = await auth.supabase
     .from("projects")
-    .select("id, name, share_token")
+    .select("id, name, goal, share_token")
     .order("name");
   if (error) {
     console.error("GET /api/projects", error);
@@ -16,6 +16,11 @@ export async function GET() {
     );
   }
   return Response.json(
-    data.map((p) => ({ id: p.id, name: p.name, shareToken: p.share_token })),
+    data.map((p) => ({
+      id: p.id,
+      name: p.name,
+      goal: p.goal,
+      shareToken: p.share_token,
+    })),
   );
 }
