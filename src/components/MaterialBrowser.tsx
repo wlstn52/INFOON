@@ -13,7 +13,9 @@ import {
   formatCitation,
   type CitationStyle,
 } from "@/lib/citation";
+import CitationPanel from "@/components/CitationPanel";
 import MaterialForm from "@/components/MaterialForm";
+import ShareControl from "@/components/ShareControl";
 
 const SORT_OPTIONS = [
   { value: "latest", label: "최신순" },
@@ -40,9 +42,6 @@ export default function MaterialBrowser() {
   const [openId, setOpenId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [copied, setCopied] = useState<{ id: string; ok: boolean } | null>(
-    null,
-  );
   const [deleteError, setDeleteError] = useState("");
 
   async function handleDelete(id: string) {
@@ -57,16 +56,6 @@ export default function MaterialBrowser() {
     }
   }
 
-  async function handleCopy(id: string, text: string) {
-    let ok = true;
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch {
-      ok = false;
-    }
-    setCopied({ id, ok });
-    setTimeout(() => setCopied((c) => (c?.id === id ? null : c)), 2000);
-  }
 
   const projects = useMemo(
     () => ["전체", ...new Set(materials.map((m) => m.projectName))],
@@ -145,6 +134,10 @@ export default function MaterialBrowser() {
           </select>
         </label>
       </div>
+
+      {status === "ready" && project !== "전체" && (
+        <ShareControl key={project} projectName={project} />
+      )}
 
       {deleteError && <p className="text-sm text-red-600">{deleteError}</p>}
 
@@ -253,29 +246,7 @@ export default function MaterialBrowser() {
                   )}
                 </div>
 
-                {isOpen && (
-                  <div className="flex flex-col gap-2 rounded bg-zinc-100 p-3 dark:bg-zinc-800">
-                    <p className="break-words text-sm">{citation}</p>
-                    <div className="flex items-center gap-3">
-                      <button
-                        type="button"
-                        onClick={() => handleCopy(m.id, citation)}
-                        className="rounded-full bg-[#1b4965] px-4 py-1 text-xs font-medium text-white transition-colors hover:bg-[#163a52]"
-                      >
-                        복사
-                      </button>
-                      {copied?.id === m.id && (
-                        <span
-                          className={`text-xs ${copied.ok ? "text-emerald-600" : "text-red-600"}`}
-                        >
-                          {copied.ok
-                            ? "복사되었습니다."
-                            : "복사에 실패했습니다. 직접 선택해서 복사해 주세요."}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )}
+                {isOpen && <CitationPanel citation={citation} />}
               </div>
             );
           })}

@@ -35,12 +35,12 @@ export default function SiteHeader() {
           </span>
         </Link>
         <nav className="flex items-center gap-4 text-sm font-medium">
-          <a href="#materials" className="text-zinc-600 hover:text-[#1b4965] dark:text-zinc-400">
+          <Link href="/#materials" className="text-zinc-600 hover:text-[#1b4965] dark:text-zinc-400">
             자료 확인하기
-          </a>
-          <a href="#new-material" className="text-zinc-600 hover:text-[#1b4965] dark:text-zinc-400">
+          </Link>
+          <Link href="/#new-material" className="text-zinc-600 hover:text-[#1b4965] dark:text-zinc-400">
             새 자료 등록
-          </a>
+          </Link>
           {loading ? null : session ? (
             <div className="flex items-center gap-3">
               <span className="text-zinc-600 dark:text-zinc-400">
