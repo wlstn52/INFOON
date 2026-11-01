@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import BibliographyPanel from "@/components/BibliographyPanel";
 import CitationPanel from "@/components/CitationPanel";
 import {
   CITATION_STYLES,
@@ -16,6 +17,7 @@ export default function SharedMaterialList({
 }) {
   const [style, setStyle] = useState<CitationStyle>("apa");
   const [openId, setOpenId] = useState<string | null>(null);
+  const [showBibliography, setShowBibliography] = useState(false);
 
   if (materials.length === 0) {
     return (
@@ -27,20 +29,37 @@ export default function SharedMaterialList({
 
   return (
     <div className="flex flex-col gap-3">
-      <label className="flex items-center gap-2 self-end text-sm text-zinc-600 dark:text-zinc-400">
-        인용 양식
-        <select
-          className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"
-          value={style}
-          onChange={(e) => setStyle(e.target.value as CitationStyle)}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <button
+          type="button"
+          onClick={() => setShowBibliography((v) => !v)}
+          className="rounded-full border border-zinc-300 px-3 py-1 text-xs text-zinc-600 transition-colors hover:border-[#1b4965] hover:text-[#1b4965] dark:border-zinc-700 dark:text-zinc-400"
         >
-          {CITATION_STYLES.map((s) => (
-            <option key={s.value} value={s.value}>
-              {s.label}
-            </option>
-          ))}
-        </select>
-      </label>
+          {showBibliography ? "− 참고문헌 닫기" : "+ 참고문헌·내보내기"}
+        </button>
+        <label className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+          인용 양식
+          <select
+            className="rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+            value={style}
+            onChange={(e) => setStyle(e.target.value as CitationStyle)}
+          >
+            {CITATION_STYLES.map((s) => (
+              <option key={s.value} value={s.value}>
+                {s.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      {showBibliography && (
+        <BibliographyPanel
+          materials={materials}
+          style={style}
+          fileBase={`INFOON-${materials[0].projectName}`}
+        />
+      )}
 
       {materials.map((m) => {
         const isOpen = openId === m.id;

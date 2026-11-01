@@ -13,20 +13,26 @@ import {
   formatCitation,
   type CitationStyle,
 } from "@/lib/citation";
+import { ALL, filterMaterials, type SortValue } from "@/lib/filterMaterials";
+import BibliographyPanel from "@/components/BibliographyPanel";
 import CitationPanel from "@/components/CitationPanel";
 import MaterialForm from "@/components/MaterialForm";
+import MaterialStats from "@/components/MaterialStats";
 import ShareControl from "@/components/ShareControl";
 
-const SORT_OPTIONS = [
+const SORT_OPTIONS: { value: SortValue; label: string }[] = [
   { value: "latest", label: "최신순" },
   { value: "importance", label: "중요도순" },
   { value: "title", label: "이름순" },
-] as const;
-
-type SortValue = (typeof SORT_OPTIONS)[number]["value"];
+];
 
 const selectClass =
   "rounded border border-zinc-300 bg-white px-3 py-1.5 text-sm dark:border-zinc-700 dark:bg-zinc-900";
+
+const toggleClass =
+  "rounded-full border border-zinc-300 px-3 py-1 text-xs text-zinc-600 transition-colors hover:border-[#1b4965] hover:text-[#1b4965] dark:border-zinc-700 dark:text-zinc-400";
+
+type ToolPanel = "stats" | "bibliography" | null;
 
 export default function MaterialBrowser() {
   const { status, materials } = useSyncExternalStore(
@@ -35,8 +41,10 @@ export default function MaterialBrowser() {
     getServerSnapshot,
   );
 
-  const [project, setProject] = useState("전체");
-  const [type, setType] = useState("전체");
+  const [selectedProject, setSelectedProject] = useState(ALL);
+  const [selectedType, setSelectedType] = useState(ALL);
+  const [query, setQuery] = useState("");
+  const [toolPanel, setToolPanel] = useState<ToolPanel>(null);
   const [sort, setSort] = useState<SortValue>("latest");
   const [citationStyle, setCitationStyle] = useState<CitationStyle>("apa");
   const [openId, setOpenId] = useState<string | null>(null);
@@ -56,40 +64,43 @@ export default function MaterialBrowser() {
     }
   }
 
-
   const projects = useMemo(
-    () => ["전체", ...new Set(materials.map((m) => m.projectName))],
+    () => [ALL, ...new Set(materials.map((m) => m.projectName))],
     [materials],
   );
   const types = useMemo(
-    () => ["전체", ...new Set(materials.map((m) => m.type))],
+    () => [ALL, ...new Set(materials.map((m) => m.type))],
     [materials],
   );
 
-  const visible = useMemo(() => {
-    const filtered = materials.filter(
-      (m) =>
-        (project === "전체" || m.projectName === project) &&
-        (type === "전체" || m.type === type),
-    );
-    const sorted = [...filtered];
-    if (sort === "latest") {
-      sorted.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-    } else if (sort === "importance") {
-      sorted.sort((a, b) => b.importance - a.importance);
-    } else {
-      sorted.sort((a, b) => a.title.localeCompare(b.title, "ko"));
-    }
-    return sorted;
-  }, [materials, project, type, sort]);
+  // 마지막 자료를 지우거나 옮겨서 선택지가 사라지면 "전체"로 되돌린다
+  const project = projects.includes(selectedProject) ? selectedProject : ALL;
+  const type = types.includes(selectedType) ? selectedType : ALL;
+
+  const visible = useMemo(
+    () => filterMaterials(materials, { project, type, query, sort }),
+    [materials, project, type, query, sort],
+  );
+
+  const toggleTool = (panel: Exclude<ToolPanel, null>) =>
+    setToolPanel((current) => (current === panel ? null : panel));
 
   return (
     <div className="flex flex-col gap-4 p-5">
+      <input
+        type="search"
+        className={`${selectClass} w-full`}
+        placeholder="제목, 저자, 설명, 학술지, 출판사, 식별자로 검색"
+        aria-label="자료 검색"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+      />
       <div className="flex flex-wrap gap-3">
         <select
           className={selectClass}
+          aria-label="프로젝트"
           value={project}
-          onChange={(e) => setProject(e.target.value)}
+          onChange={(e) => setSelectedProject(e.target.value)}
         >
           {projects.map((p) => (
             <option key={p} value={p}>
@@ -99,6 +110,7 @@ export default function MaterialBrowser() {
         </select>
         <select
           className={selectClass}
+          aria-label="정렬"
           value={sort}
           onChange={(e) => setSort(e.target.value as SortValue)}
         >
@@ -110,8 +122,9 @@ export default function MaterialBrowser() {
         </select>
         <select
           className={selectClass}
+          aria-label="자료 종류"
           value={type}
-          onChange={(e) => setType(e.target.value)}
+          onChange={(e) => setSelectedType(e.target.value)}
         >
           {types.map((t) => (
             <option key={t} value={t}>
@@ -135,7 +148,45 @@ export default function MaterialBrowser() {
         </label>
       </div>
 
-      {status === "ready" && project !== "전체" && (
+      {status === "ready" && materials.length > 0 && (
+        <>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="mr-1 text-sm text-zinc-600 dark:text-zinc-400">
+              자료 {visible.length}건
+              {visible.length !== materials.length &&
+                ` / 전체 ${materials.length}건`}
+            </span>
+            <button
+              type="button"
+              onClick={() => toggleTool("stats")}
+              className={toggleClass}
+            >
+              {toolPanel === "stats" ? "− 통계 닫기" : "+ 통계"}
+            </button>
+            <button
+              type="button"
+              onClick={() => toggleTool("bibliography")}
+              className={toggleClass}
+            >
+              {toolPanel === "bibliography"
+                ? "− 참고문헌 닫기"
+                : "+ 참고문헌·내보내기"}
+            </button>
+          </div>
+          {toolPanel === "stats" && (
+            <MaterialStats materials={visible} showProjects={project === ALL} />
+          )}
+          {toolPanel === "bibliography" && (
+            <BibliographyPanel
+              materials={visible}
+              style={citationStyle}
+              fileBase={project === ALL ? "INFOON" : `INFOON-${project}`}
+            />
+          )}
+        </>
+      )}
+
+      {status === "ready" && project !== ALL && (
         <ShareControl key={project} projectName={project} />
       )}
 
