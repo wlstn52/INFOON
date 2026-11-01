@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import SharedMaterialList from "@/components/SharedMaterialList";
-import type { Author, Material } from "@/lib/materials";
+import SharedMaterialList, {
+  type SharedMaterial,
+} from "@/components/SharedMaterialList";
 import { isUuid } from "@/lib/materialDb";
 import { createClient } from "@/lib/supabase/server";
 
@@ -10,7 +11,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-type SharedRow = Record<string, string | number | Author[] | null>;
+type SharedRow = Record<string, unknown>;
 
 function toMaterial(row: SharedRow, index: number, projectName: string) {
   const fields = Object.fromEntries(
@@ -23,7 +24,7 @@ function toMaterial(row: SharedRow, index: number, projectName: string) {
     projectName,
     location: "",
     createdAt: row.created_at,
-  } as unknown as Material;
+  } as unknown as SharedMaterial;
 }
 
 export default async function SharePage({

@@ -31,12 +31,31 @@ export type Material = {
 
 export type MaterialInput = Omit<Material, "id" | "createdAt">;
 
+export type RelationType = "cites" | "related";
+
+export type MaterialRelation = {
+  id: string;
+  sourceId: string;
+  targetId: string;
+  relation: RelationType;
+};
+
+export function relationLabel(relation: RelationType, outgoing: boolean) {
+  if (relation === "related") return "관련";
+  return outgoing ? "인용함" : "인용됨";
+}
+
 export type MaterialsState = {
   status: "loading" | "ready" | "unauthenticated" | "error";
   materials: Material[];
+  relations: MaterialRelation[];
 };
 
-const INITIAL_STATE: MaterialsState = { status: "loading", materials: [] };
+const INITIAL_STATE: MaterialsState = {
+  status: "loading",
+  materials: [],
+  relations: [],
+};
 
 let state = INITIAL_STATE;
 let started = false;
@@ -49,15 +68,22 @@ function setState(next: MaterialsState) {
 
 async function load() {
   try {
-    const res = await fetch("/api/materials");
-    if (res.status === 401) {
-      setState({ status: "unauthenticated", materials: [] });
+    const [materials, relations] = await Promise.all([
+      fetch("/api/materials"),
+      fetch("/api/relations"),
+    ]);
+    if (materials.status === 401 || relations.status === 401) {
+      setState({ status: "unauthenticated", materials: [], relations: [] });
       return;
     }
-    if (!res.ok) throw new Error();
-    setState({ status: "ready", materials: await res.json() });
+    if (!materials.ok || !relations.ok) throw new Error();
+    setState({
+      status: "ready",
+      materials: await materials.json(),
+      relations: await relations.json(),
+    });
   } catch {
-    setState({ status: "error", materials: [] });
+    setState({ status: "error", materials: [], relations: [] });
   }
 }
 
@@ -91,7 +117,7 @@ export function refreshMaterials() {
   return load();
 }
 
-async function send(url: string, method: string, body?: MaterialInput) {
+async function send(url: string, method: string, body?: object) {
   const res = await fetch(url, {
     method,
     headers: body ? { "Content-Type": "application/json" } : undefined,
@@ -124,5 +150,30 @@ export async function deleteMaterial(id: string) {
   setState({
     ...state,
     materials: state.materials.filter((m) => m.id !== id),
+    relations: state.relations.filter(
+      (r) => r.sourceId !== id && r.targetId !== id,
+    ),
+  });
+}
+
+export async function addRelation(
+  sourceId: string,
+  targetId: string,
+  relation: RelationType,
+) {
+  const res = await send("/api/relations", "POST", {
+    sourceId,
+    targetId,
+    relation,
+  });
+  const created: MaterialRelation = await res.json();
+  setState({ ...state, relations: [...state.relations, created] });
+}
+
+export async function deleteRelation(id: string) {
+  await send(`/api/relations/${id}`, "DELETE");
+  setState({
+    ...state,
+    relations: state.relations.filter((r) => r.id !== id),
   });
 }

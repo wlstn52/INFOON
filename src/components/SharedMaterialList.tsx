@@ -8,12 +8,20 @@ import {
   formatCitation,
   type CitationStyle,
 } from "@/lib/citation";
-import type { Material } from "@/lib/materials";
+import {
+  relationLabel,
+  type Material,
+  type RelationType,
+} from "@/lib/materials";
+
+export type SharedMaterial = Material & {
+  relations?: { relation: RelationType; outgoing: boolean; title: string }[];
+};
 
 export default function SharedMaterialList({
   materials,
 }: {
-  materials: Material[];
+  materials: SharedMaterial[];
 }) {
   const [style, setStyle] = useState<CitationStyle>("apa");
   const [openId, setOpenId] = useState<string | null>(null);
@@ -78,6 +86,21 @@ export default function SharedMaterialList({
               <p className="text-sm text-zinc-600 dark:text-zinc-400">
                 {m.description}
               </p>
+            )}
+            {m.relations && m.relations.length > 0 && (
+              <ul className="flex flex-col gap-0.5 text-sm">
+                {m.relations.map((r) => (
+                  <li
+                    key={`${r.relation}-${r.outgoing}-${r.title}`}
+                    className="break-words text-zinc-600 dark:text-zinc-400"
+                  >
+                    <span className="text-xs text-zinc-500">
+                      {relationLabel(r.relation, r.outgoing)}:{" "}
+                    </span>
+                    {r.title}
+                  </li>
+                ))}
+              </ul>
             )}
             <button
               type="button"

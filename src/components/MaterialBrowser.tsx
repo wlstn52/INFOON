@@ -19,6 +19,7 @@ import CitationPanel from "@/components/CitationPanel";
 import MaterialForm from "@/components/MaterialForm";
 import MaterialStats from "@/components/MaterialStats";
 import ProjectManager from "@/components/ProjectManager";
+import RelationPanel from "@/components/RelationPanel";
 import ShareControl from "@/components/ShareControl";
 
 const SORT_OPTIONS: { value: SortValue; label: string }[] = [
@@ -36,7 +37,7 @@ const toggleClass =
 type ToolPanel = "stats" | "bibliography" | "projects" | null;
 
 export default function MaterialBrowser() {
-  const { status, materials } = useSyncExternalStore(
+  const { status, materials, relations } = useSyncExternalStore(
     subscribe,
     getSnapshot,
     getServerSnapshot,
@@ -49,6 +50,7 @@ export default function MaterialBrowser() {
   const [sort, setSort] = useState<SortValue>("latest");
   const [citationStyle, setCitationStyle] = useState<CitationStyle>("apa");
   const [openId, setOpenId] = useState<string | null>(null);
+  const [relationsOpenId, setRelationsOpenId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState("");
@@ -243,6 +245,10 @@ export default function MaterialBrowser() {
           {visible.map((m) => {
             const isOpen = openId === m.id;
             const citation = isOpen ? formatCitation(m, citationStyle) : "";
+            const relationCount = relations.filter(
+              (r) => r.sourceId === m.id || r.targetId === m.id,
+            ).length;
+            const relationsOpen = relationsOpenId === m.id;
             if (editingId === m.id) {
               return (
                 <div
@@ -273,13 +279,25 @@ export default function MaterialBrowser() {
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
                     onClick={() => setOpenId(isOpen ? null : m.id)}
                     className="rounded-full border border-zinc-300 px-3 py-1 text-xs text-zinc-600 transition-colors hover:border-[#1b4965] hover:text-[#1b4965] dark:border-zinc-700 dark:text-zinc-400"
                   >
                     {isOpen ? "− 인용 닫기" : "+ 인용"}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setRelationsOpenId(relationsOpen ? null : m.id)
+                    }
+                    className={toggleClass}
+                  >
+                    {relationsOpen
+                      ? "− 관계 닫기"
+                      : `+ 관계${relationCount > 0 ? ` ${relationCount}` : ""}`}
                   </button>
 
                   <button
@@ -322,6 +340,13 @@ export default function MaterialBrowser() {
                 </div>
 
                 {isOpen && <CitationPanel citation={citation} />}
+                {relationsOpen && (
+                  <RelationPanel
+                    material={m}
+                    materials={materials}
+                    relations={relations}
+                  />
+                )}
               </div>
             );
           })}
