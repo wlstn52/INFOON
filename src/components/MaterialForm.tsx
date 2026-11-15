@@ -5,18 +5,44 @@ import {
   addMaterial,
   getServerSnapshot,
   getSnapshot,
+  importanceText,
+  showMaterial,
   subscribe,
   updateMaterial,
   type Author,
   type Material,
+  type MaterialInput,
 } from "@/lib/materials";
+import {
+  CITATION_STYLES,
+  formatCitation,
+  type CitationStyle,
+} from "@/lib/citation";
+import { identifierKey } from "@/lib/identifiers";
 import type { LookupResult } from "@/lib/lookup";
 import AuthorListEditor from "@/components/AuthorListEditor";
+import CitationPanel from "@/components/CitationPanel";
 
-const IMPORTANCE_OPTIONS = [1, 2, 3, 4, 5];
+const IMPORTANCE_OPTIONS = [5, 4, 3, 2, 1];
+
+type SaveIssue =
+  | { kind: "duplicate"; material: Material }
+  | { kind: "notFound" };
+
+// 조회 서비스에 실제로 있는 DOI/ISBN인지 확인. 서비스 오류는 막지 않는다.
+async function verifyIdentifier(identifier: string) {
+  try {
+    const res = await fetch(
+      `/api/lookup?id=${encodeURIComponent(identifier.trim())}`,
+    );
+    if (res.ok) return "found";
+    if (res.status === 404) return "notFound";
+  } catch {}
+  return "unknown";
+}
 
 const inputClass =
-  "rounded border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900";
+  "min-w-0 rounded border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900";
 
 function hasDetails(m?: Material) {
   return !!(
@@ -91,8 +117,53 @@ export default function MaterialForm({
     ok: boolean;
     lines: string[];
   } | null>(null);
+  // 수정 모드의 기존 식별자와 자동 입력으로 확인된 식별자는 다시 조회하지 않는다
+  const [verifiedKey, setVerifiedKey] = useState(
+    identifierKey(material?.identifier),
+  );
+  const [checking, setChecking] = useState(false);
+  const [issues, setIssues] = useState<SaveIssue[] | null>(null);
+  const [previewStyle, setPreviewStyle] = useState<CitationStyle>("apa");
+
+  const idKey = identifierKey(identifier);
+  const duplicates = useMemo(
+    () =>
+      idKey
+        ? materials.filter(
+            (m) =>
+              m.id !== material?.id && identifierKey(m.identifier) === idKey,
+          )
+        : [],
+    [materials, idKey, material?.id],
+  );
+
+  function collectData(): MaterialInput {
+    return {
+      projectName,
+      title,
+      type,
+      location,
+      importance,
+      description,
+      authors: authors.length > 0 ? authors : undefined,
+      publisher: publisher || undefined,
+      publish_date: publishDate || undefined,
+      year: year || undefined,
+      language: language || undefined,
+      url: url || undefined,
+      access_date: accessDate || undefined,
+      organization: organization || undefined,
+      identifier: identifier || undefined,
+      journal: journal || undefined,
+      volume: volume || undefined,
+      issue: issue || undefined,
+      pages: pages || undefined,
+    };
+  }
 
   function applyLookup({ fields, warnings }: LookupResult) {
+    setVerifiedKey(identifierKey(fields.identifier));
+    setIssues(null);
     let filled = 0;
     const fill = (
       current: string,
@@ -161,34 +232,8 @@ export default function MaterialForm({
     }
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!projectName || !title || !type) {
-      setMessage("");
-      setError("프로젝트, 자료명, 자료 종류는 필수 입력 항목입니다.");
-      return;
-    }
-    const data = {
-      projectName,
-      title,
-      type,
-      location,
-      importance,
-      description,
-      authors: authors.length > 0 ? authors : undefined,
-      publisher: publisher || undefined,
-      publish_date: publishDate || undefined,
-      year: year || undefined,
-      language: language || undefined,
-      url: url || undefined,
-      access_date: accessDate || undefined,
-      organization: organization || undefined,
-      identifier: identifier || undefined,
-      journal: journal || undefined,
-      volume: volume || undefined,
-      issue: issue || undefined,
-      pages: pages || undefined,
-    };
+  async function save(data: MaterialInput) {
+    setIssues(null);
     setBusy(true);
     setError("");
     setMessage("");
@@ -226,8 +271,42 @@ export default function MaterialForm({
     setPages("");
     setLookupId("");
     setLookupNote(null);
+    setVerifiedKey(null);
     setError("");
     setMessage("자료가 등록되었습니다.");
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!projectName || !title || !type) {
+      setMessage("");
+      setError("프로젝트, 자료명, 자료 종류는 필수 입력 항목입니다.");
+      return;
+    }
+    const data = collectData();
+    setError("");
+    setMessage("");
+
+    // 같은 프로젝트의 중복만 확인을 받고, 다른 프로젝트의 중복은 안내만 한다
+    const found: SaveIssue[] = duplicates
+      .filter((m) => m.projectName === projectName.trim())
+      .map((m) => ({ kind: "duplicate", material: m }));
+
+    if (idKey && idKey !== verifiedKey) {
+      setBusy(true);
+      setChecking(true);
+      const result = await verifyIdentifier(identifier);
+      setChecking(false);
+      setBusy(false);
+      if (result === "found") setVerifiedKey(idKey);
+      if (result === "notFound") found.push({ kind: "notFound" });
+    }
+
+    if (found.length > 0) {
+      setIssues(found);
+      return;
+    }
+    await save(data);
   }
 
   return (
@@ -277,7 +356,10 @@ export default function MaterialForm({
           className={`${inputClass} flex-1`}
           list={`${uid}-project`}
           value={projectName}
-          onChange={(e) => setProjectName(e.target.value)}
+          onChange={(e) => {
+            setProjectName(e.target.value);
+            setIssues(null);
+          }}
         />
         <datalist id={`${uid}-project`}>
           {projectNames.map((p) => (
@@ -389,7 +471,10 @@ export default function MaterialForm({
               className={`${inputClass} flex-1`}
               placeholder="DOI, ISBN 등"
               value={identifier}
-              onChange={(e) => setIdentifier(e.target.value)}
+              onChange={(e) => {
+                setIdentifier(e.target.value);
+                setIssues(null);
+              }}
             />
           </label>
           <label className="flex items-center gap-4">
@@ -466,17 +551,23 @@ export default function MaterialForm({
         <span className="w-24 shrink-0 text-sm text-zinc-600 dark:text-zinc-400">
           중요도
         </span>
-        <select
-          className={inputClass}
-          value={importance}
-          onChange={(e) => setImportance(Number(e.target.value))}
-        >
-          {IMPORTANCE_OPTIONS.map((n) => (
-            <option key={n} value={n}>
-              {n}
-            </option>
-          ))}
-        </select>
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
+          <select
+            className={`${inputClass} self-start`}
+            value={importance}
+            onChange={(e) => setImportance(Number(e.target.value))}
+          >
+            {IMPORTANCE_OPTIONS.map((n) => (
+              <option key={n} value={n}>
+                {importanceText(n)}
+              </option>
+            ))}
+          </select>
+          <span className="text-xs text-zinc-500">
+            5 핵심(꼭 인용할 자료) ~ 1 참고만(배경 지식). 중요도순 정렬과 통계에
+            쓰입니다.
+          </span>
+        </div>
       </label>
 
       <label className="flex items-start gap-4">
@@ -490,6 +581,85 @@ export default function MaterialForm({
         />
       </label>
 
+      {title.trim() && (
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+            인용 미리보기
+            <select
+              className="rounded border border-zinc-300 bg-white px-2 py-1 text-xs dark:border-zinc-700 dark:bg-zinc-900"
+              aria-label="미리보기 인용 양식"
+              value={previewStyle}
+              onChange={(e) => setPreviewStyle(e.target.value as CitationStyle)}
+            >
+              {CITATION_STYLES.map((s) => (
+                <option key={s.value} value={s.value}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <CitationPanel
+            citation={formatCitation(
+              {
+                ...collectData(),
+                id: "preview",
+                createdAt: new Date().toISOString().slice(0, 10),
+              },
+              previewStyle,
+            )}
+          />
+        </div>
+      )}
+
+      {duplicates.length > 0 && !issues && (
+        <div className="flex flex-col gap-1 rounded border border-zinc-300 p-3 text-sm dark:border-zinc-700">
+          <p className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+            같은 DOI/ISBN으로 등록된 자료가 있습니다
+          </p>
+          {duplicates.map((m) => (
+            <DuplicateRow key={m.id} material={m} />
+          ))}
+        </div>
+      )}
+
+      {issues && (
+        <div
+          role="alert"
+          className="flex flex-col gap-2 rounded border border-amber-500 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-400 dark:bg-amber-950/40 dark:text-amber-100"
+        >
+          <p className="font-medium">⚠ 저장 전에 확인해 주세요</p>
+          {issues.map((issue) =>
+            issue.kind === "duplicate" ? (
+              <div key={issue.material.id} className="flex flex-col gap-1">
+                <p>이 프로젝트에 같은 DOI/ISBN의 자료가 이미 있습니다.</p>
+                <DuplicateRow material={issue.material} />
+              </div>
+            ) : (
+              <p key="notFound">
+                입력한 DOI/ISBN을 조회 서비스에서 찾지 못했습니다. 오타가 없는지
+                확인해 주세요. 국내 도서 ISBN은 조회되지 않을 수 있습니다.
+              </p>
+            ),
+          )}
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => save(collectData())}
+              className="rounded-full bg-[#1b4965] px-4 py-1 text-xs font-medium text-white transition-colors hover:bg-[#163a52]"
+            >
+              {material ? "그래도 저장" : "그래도 등록"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setIssues(null)}
+              className="rounded-full border border-zinc-400 px-4 py-1 text-xs"
+            >
+              취소
+            </button>
+          </div>
+        </div>
+      )}
+
       {error && <p className="text-sm text-red-600">{error}</p>}
       {message && <p className="text-sm text-emerald-600">{message}</p>}
 
@@ -499,7 +669,13 @@ export default function MaterialForm({
           disabled={busy}
           className="rounded-full bg-[#1b4965] px-5 py-2 font-medium text-white transition-colors hover:bg-[#163a52] disabled:opacity-60"
         >
-          {busy ? "저장 중..." : material ? "저장" : "등록"}
+          {checking
+            ? "DOI/ISBN 확인 중..."
+            : busy
+              ? "저장 중..."
+              : material
+                ? "저장"
+                : "등록"}
         </button>
         {material && (
           <button
@@ -512,5 +688,23 @@ export default function MaterialForm({
         )}
       </div>
     </form>
+  );
+}
+
+function DuplicateRow({ material }: { material: Material }) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="min-w-0 break-words">
+        {material.title}
+        <span className="text-xs opacity-70"> ({material.projectName})</span>
+      </span>
+      <button
+        type="button"
+        onClick={() => showMaterial(material.id)}
+        className="rounded-full border border-current px-3 py-0.5 text-xs"
+      >
+        기존 자료 보기
+      </button>
+    </div>
   );
 }

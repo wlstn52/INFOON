@@ -40,9 +40,29 @@ export type MaterialRelation = {
   relation: RelationType;
 };
 
-export function relationLabel(relation: RelationType, outgoing: boolean) {
-  if (relation === "related") return "관련";
-  return outgoing ? "인용함" : "인용됨";
+export const IMPORTANCE_LABELS: Record<number, string> = {
+  1: "참고만",
+  2: "낮음",
+  3: "보통",
+  4: "중요",
+  5: "핵심",
+};
+
+export function importanceText(level: number) {
+  return `${level} · ${IMPORTANCE_LABELS[level] ?? ""}`;
+}
+
+// 등록 폼에서 "기존 자료 보기"를 누르면 목록이 해당 자료로 이동한다
+const SHOW_EVENT = "infoon:show-material";
+
+export function showMaterial(id: string) {
+  window.dispatchEvent(new CustomEvent(SHOW_EVENT, { detail: id }));
+}
+
+export function onShowMaterial(handler: (id: string) => void) {
+  const listener = (e: Event) => handler((e as CustomEvent<string>).detail);
+  window.addEventListener(SHOW_EVENT, listener);
+  return () => window.removeEventListener(SHOW_EVENT, listener);
 }
 
 export type MaterialsState = {

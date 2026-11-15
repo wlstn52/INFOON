@@ -1,4 +1,4 @@
-import type { Material } from "@/lib/materials";
+import { importanceText, type Material } from "@/lib/materials";
 
 type Row = { label: string; count: number };
 
@@ -33,7 +33,7 @@ function BarGroup({ title, rows }: { title: string; rows: Row[] }) {
           <li
             key={row.label}
             title={`${row.label}: ${row.count}건`}
-            className="grid grid-cols-[4.5rem_1fr] items-center gap-2 text-xs"
+            className="grid grid-cols-[5rem_1fr] items-center gap-2 text-xs"
           >
             <span className="truncate text-zinc-600 dark:text-zinc-400">
               {row.label}
@@ -62,7 +62,7 @@ export default function MaterialStats({
   showProjects: boolean;
 }) {
   const importance = [5, 4, 3, 2, 1].map((level) => ({
-    label: `중요도 ${level}`,
+    label: importanceText(level),
     count: materials.filter((m) => m.importance === level).length,
   }));
 

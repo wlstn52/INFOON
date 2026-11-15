@@ -1,10 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import RelationText from "@/components/RelationText";
 import {
   addRelation,
   deleteRelation,
-  relationLabel,
   type Material,
   type MaterialRelation,
 } from "@/lib/materials";
@@ -12,9 +12,9 @@ import {
 type Choice = "cites-out" | "cites-in" | "related";
 
 const CHOICES: { value: Choice; label: string }[] = [
-  { value: "cites-out", label: "이 자료가 인용함" },
-  { value: "cites-in", label: "이 자료를 인용함" },
-  { value: "related", label: "관련 있음" },
+  { value: "cites-out", label: "이 자료 → 선택한 자료 (인용)" },
+  { value: "cites-in", label: "선택한 자료 → 이 자료 (인용)" },
+  { value: "related", label: "이 자료 ↔ 선택한 자료 (관련)" },
 ];
 
 const selectClass =
@@ -100,16 +100,22 @@ export default function RelationPanel({
                 className="flex items-center justify-between gap-3 text-sm"
               >
                 <span className="min-w-0 break-words">
-                  <span className="text-xs text-zinc-500">
-                    {relationLabel(r.relation, outgoing)}:{" "}
-                  </span>
-                  {other?.title ?? "(찾을 수 없음)"}
-                  {other && other.projectName !== material.projectName && (
-                    <span className="text-xs text-zinc-500">
-                      {" "}
-                      · {other.projectName}
-                    </span>
-                  )}
+                  <RelationText
+                    relation={r.relation}
+                    outgoing={outgoing}
+                    self="이 자료"
+                    other={
+                      <>
+                        {other?.title ?? "(찾을 수 없음)"}
+                        {other && other.projectName !== material.projectName && (
+                          <span className="text-xs text-zinc-500">
+                            {" "}
+                            ({other.projectName})
+                          </span>
+                        )}
+                      </>
+                    }
+                  />
                 </span>
                 <button
                   type="button"

@@ -8,11 +8,8 @@ import {
   formatCitation,
   type CitationStyle,
 } from "@/lib/citation";
-import {
-  relationLabel,
-  type Material,
-  type RelationType,
-} from "@/lib/materials";
+import RelationText from "@/components/RelationText";
+import type { Material, RelationType } from "@/lib/materials";
 
 export type SharedMaterial = Material & {
   relations?: { relation: RelationType; outgoing: boolean; title: string }[];
@@ -94,10 +91,12 @@ export default function SharedMaterialList({
                     key={`${r.relation}-${r.outgoing}-${r.title}`}
                     className="break-words text-zinc-600 dark:text-zinc-400"
                   >
-                    <span className="text-xs text-zinc-500">
-                      {relationLabel(r.relation, r.outgoing)}:{" "}
-                    </span>
-                    {r.title}
+                    <RelationText
+                      relation={r.relation}
+                      outgoing={r.outgoing}
+                      self="이 자료"
+                      other={r.title}
+                    />
                   </li>
                 ))}
               </ul>

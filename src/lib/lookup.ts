@@ -1,3 +1,4 @@
+import type { ParsedIdentifier } from "@/lib/identifiers";
 import type { Author, MaterialInput } from "@/lib/materials";
 
 export type LookupFields = Partial<
@@ -8,10 +9,6 @@ export type LookupResult = {
   fields: LookupFields;
   warnings: string[];
 };
-
-export type ParsedIdentifier =
-  | { kind: "doi"; value: string }
-  | { kind: "isbn"; value: string };
 
 const MAX_AUTHORS = 100;
 const USER_AGENT = "INFOON/0.1 (https://github.com/wlstn52/INFOON)";
@@ -29,41 +26,6 @@ const DOI_HOSTS = new Set([
   "data.medra.org",
   "doi.or.kr",
 ]);
-
-function validIsbn10(s: string) {
-  const sum = [...s].reduce(
-    (acc, c, i) => acc + (c === "X" ? 10 : Number(c)) * (10 - i),
-    0,
-  );
-  return sum % 11 === 0;
-}
-
-function validIsbn13(s: string) {
-  const sum = [...s].reduce(
-    (acc, c, i) => acc + Number(c) * (i % 2 === 0 ? 1 : 3),
-    0,
-  );
-  return sum % 10 === 0;
-}
-
-// doi.org 주소, "doi:" 접두사, 하이픈이 포함된 ISBN도 받아들인다
-export function parseIdentifier(raw: string): ParsedIdentifier | null {
-  const text = raw.trim();
-  const doi = text.match(/10\.\d{4,9}\/[^\s"<>]+/)?.[0].replace(/[.,;]+$/, "");
-  if (doi) return { kind: "doi", value: doi };
-
-  const isbn = text
-    .replace(/^isbn(-1[03])?:?/i, "")
-    .replace(/[\s-]/g, "")
-    .toUpperCase();
-  if (/^\d{9}[\dX]$/.test(isbn) && validIsbn10(isbn)) {
-    return { kind: "isbn", value: isbn };
-  }
-  if (/^\d{13}$/.test(isbn) && validIsbn13(isbn)) {
-    return { kind: "isbn", value: isbn };
-  }
-  return null;
-}
 
 // 외부 응답의 문자열 정리. 제목에 <i>, &amp; 같은 마크업이 섞여 온다.
 function clean(v: unknown): string | undefined {

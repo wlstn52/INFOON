@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import {
   deleteMaterial,
   getServerSnapshot,
   getSnapshot,
+  IMPORTANCE_LABELS,
+  onShowMaterial,
   subscribe,
 } from "@/lib/materials";
 import {
@@ -54,6 +56,28 @@ export default function MaterialBrowser() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState("");
+  const [highlightId, setHighlightId] = useState<string | null>(null);
+
+  // 다른 컴포넌트가 특정 자료를 보여 달라고 하면 필터를 풀고 그 카드로 스크롤한다
+  useEffect(
+    () =>
+      onShowMaterial((id) => {
+        setSelectedProject(ALL);
+        setSelectedType(ALL);
+        setQuery("");
+        setHighlightId(id);
+        setTimeout(() => {
+          document
+            .getElementById(`material-${id}`)
+            ?.scrollIntoView({ behavior: "smooth", block: "center" });
+        }, 50);
+        setTimeout(
+          () => setHighlightId((current) => (current === id ? null : current)),
+          2500,
+        );
+      }),
+    [],
+  );
 
   async function handleDelete(id: string) {
     setDeleteError("");
@@ -265,13 +289,25 @@ export default function MaterialBrowser() {
             return (
               <div
                 key={m.id}
-                className="flex flex-col gap-2 rounded border border-zinc-200 p-3 dark:border-zinc-800"
+                id={`material-${m.id}`}
+                className={`flex flex-col gap-2 rounded border p-3 transition-shadow ${
+                  highlightId === m.id
+                    ? "border-[#1b4965] ring-2 ring-[#1b4965] dark:border-sky-400 dark:ring-sky-400"
+                    : "border-zinc-200 dark:border-zinc-800"
+                }`}
               >
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="font-medium">{m.title}</p>
                     <p className="text-xs text-zinc-500">
-                      {m.projectName} · {m.type} · {m.location}
+                      {[
+                        m.projectName,
+                        m.type,
+                        `중요도 ${IMPORTANCE_LABELS[m.importance] ?? m.importance}`,
+                        m.location,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
                     </p>
                   </div>
                   <p className="text-sm text-zinc-600 sm:max-w-xs sm:text-right dark:text-zinc-400">

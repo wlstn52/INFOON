@@ -8,6 +8,8 @@
 
 - **자료 관리:** 자료명, 종류, 저장 위치, 중요도, 설명을 등록하고 수정, 삭제합니다.
 - **자동 입력:** DOI나 ISBN을 넣으면 제목, 저자, 학술지 등 비어 있는 칸을 채웁니다.
+- **중복과 오타 확인:** 같은 DOI/ISBN의 자료가 있으면 알려 주고 기존 자료로 이동할 수 있습니다. 직접 입력한 DOI/ISBN은 저장 전에 실제로 있는지 조회합니다.
+- **인용 미리보기:** 등록하면서 선택한 양식의 인용을 바로 확인합니다.
 - **검색과 필터:** 제목, 저자, 설명, 학술지, 출판사, 식별자로 검색하고 프로젝트와 종류로 거릅니다.
 - **인용 생성:** APA 7, MLA 9, Chicago 17, IEEE 형식으로 인용을 만들어 복사합니다.
 - **참고문헌과 내보내기:** 현재 목록의 참고문헌을 정렬해 한 번에 복사하거나 TXT, BibTeX, CSV로 저장합니다.
@@ -76,6 +78,7 @@ src/
     bibliography.ts   참고문헌 정렬
     exportFormats.ts  BibTeX, CSV 변환
     filterMaterials.ts 검색, 필터, 정렬
+    identifiers.ts    DOI/ISBN 파싱과 중복 비교
     lookup.ts         DOI/ISBN 조회
     supabase/         Supabase 클라이언트
 supabase/migrations/  DB 스키마

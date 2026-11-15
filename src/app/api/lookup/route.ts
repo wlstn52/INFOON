@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { getAuthedClient } from "@/lib/materialDb";
-import { lookupIdentifier, parseIdentifier } from "@/lib/lookup";
+import { parseIdentifier } from "@/lib/identifiers";
+import { lookupIdentifier } from "@/lib/lookup";
 
 export async function GET(request: NextRequest) {
   const auth = await getAuthedClient();
