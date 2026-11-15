@@ -12,7 +12,7 @@ import {
 } from "@/lib/materials";
 import {
   CITATION_STYLES,
-  formatCitation,
+  formatCitationRich,
   type CitationStyle,
 } from "@/lib/citation";
 import { ALL, filterMaterials, type SortValue } from "@/lib/filterMaterials";
@@ -268,7 +268,7 @@ export default function MaterialBrowser() {
         <div className="flex flex-col gap-2">
           {visible.map((m) => {
             const isOpen = openId === m.id;
-            const citation = isOpen ? formatCitation(m, citationStyle) : "";
+            const citation = isOpen ? formatCitationRich(m, citationStyle) : "";
             const relationCount = relations.filter(
               (r) => r.sourceId === m.id || r.targetId === m.id,
             ).length;

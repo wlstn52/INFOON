@@ -2,7 +2,14 @@
 
 import { useState } from "react";
 import { buildBibliography } from "@/lib/bibliography";
-import { CITATION_STYLES, type CitationStyle } from "@/lib/citation";
+import {
+  CITATION_STYLES,
+  toCitationHtml,
+  toPlainCitation,
+  type CitationStyle,
+} from "@/lib/citation";
+import { copyRich } from "@/lib/clipboard";
+import CitationText from "@/components/CitationText";
 import { downloadText, toBibtex, toCsv } from "@/lib/exportFormats";
 import type { Material } from "@/lib/materials";
 
@@ -20,16 +27,13 @@ export default function BibliographyPanel({
 }) {
   const [copied, setCopied] = useState<boolean | null>(null);
   const entries = buildBibliography(materials, style);
-  const text = entries.join("\n");
+  const text = entries.map(toPlainCitation).join("\n");
+  // 붙여넣었을 때 항목마다 문단이 나뉘도록 <p>로 감싼다
+  const html = entries.map((e) => `<p>${toCitationHtml(e)}</p>`).join("");
   const styleLabel = CITATION_STYLES.find((s) => s.value === style)?.label;
 
   async function handleCopy() {
-    let ok = true;
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch {
-      ok = false;
-    }
+    const ok = await copyRich(html, text);
     setCopied(ok);
     setTimeout(() => setCopied(null), 2000);
   }
@@ -87,7 +91,7 @@ export default function BibliographyPanel({
             className={`text-xs ${copied ? "text-emerald-600" : "text-red-600"}`}
           >
             {copied
-              ? "복사되었습니다."
+              ? "복사되었습니다. 워드프로세서에 붙여넣으면 서식이 유지됩니다."
               : "복사에 실패했습니다. 직접 선택해서 복사해 주세요."}
           </span>
         )}
@@ -95,7 +99,7 @@ export default function BibliographyPanel({
       <ul className="flex max-h-72 flex-col gap-2 overflow-y-auto text-sm">
         {entries.map((entry) => (
           <li key={entry} className="break-words">
-            {entry}
+            <CitationText citation={entry} />
           </li>
         ))}
       </ul>

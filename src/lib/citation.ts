@@ -43,8 +43,21 @@ function hasFullDate(d: ParsedDate): d is Required<Omit<ParsedDate, "raw">> & Pa
   return !!(d.year && d.month && d.day);
 }
 
+// 인용 안의 강조 구간 표시. 영문 자료는 이탤릭, 국문 자료는 굵게 쓴다.
+const ITALIC = ["", ""] as const;
+const BOLD = ["", ""] as const;
+const MARKS = /[-]/g;
+
+const stripMarks = (s: string) => s.replace(MARKS, "");
+
+function emph(text: string | undefined, korean: boolean) {
+  if (!text) return text;
+  const [open, close] = korean ? BOLD : ITALIC;
+  return `${open}${text}${close}`;
+}
+
 function period(s: string) {
-  return /[.?!]$/.test(s) ? s : `${s}.`;
+  return /[.?!]$/.test(stripMarks(s)) ? s : `${s}.`;
 }
 
 const DOI = /10\.\d{4,9}\/\S+/;
@@ -71,6 +84,13 @@ function initials(...names: (string | undefined)[]) {
 
 const isHangul = (a: Author) => HANGUL.test(a.familyName + a.givenName);
 
+// 국문 자료 판단: 첫 저자가 한글 이름이면, 저자가 없으면 기관명이나 제목이 한글이면 국문으로 본다
+export function isKoreanMaterial(m: Material) {
+  const first = m.authors?.[0];
+  if (first) return isHangul(first);
+  return HANGUL.test(m.organization ?? "") || HANGUL.test(m.title);
+}
+
 function koreanName(a: Author) {
   return [a.familyName, a.middleName, a.givenName].filter(Boolean).join("");
 }
@@ -93,16 +113,26 @@ function nameNatural(a: Author, abbreviate: boolean) {
   return `${first} ${a.familyName}`;
 }
 
-function apaAuthors(list: Author[]) {
+// 한국심리학회 계열 규정: 국문 저자는 쉼표로만 잇고 &를 쓰지 않는다
+function apaAuthors(list: Author[], korean: boolean) {
   const names = list.map((a) => nameInverted(a, true));
   if (names.length === 1) return names[0];
+  if (korean) {
+    return names.length <= 20
+      ? names.join(", ")
+      : `${names.slice(0, 19).join(", ")}, . . . ${names[names.length - 1]}`;
+  }
   if (names.length <= 20) {
     return `${names.slice(0, -1).join(", ")}, & ${names[names.length - 1]}`;
   }
   return `${names.slice(0, 19).join(", ")}, . . . ${names[names.length - 1]}`;
 }
 
-function mlaAuthors(list: Author[]) {
+function mlaAuthors(list: Author[], korean: boolean) {
+  if (korean) {
+    if (list.length >= 3) return `${nameInverted(list[0], false)} 외`;
+    return list.map((a) => nameInverted(a, false)).join(", ");
+  }
   if (list.length >= 3) return `${nameInverted(list[0], false)}, et al.`;
   if (list.length === 2) {
     return `${nameInverted(list[0], false)}, and ${nameNatural(list[1], false)}`;
@@ -110,30 +140,47 @@ function mlaAuthors(list: Author[]) {
   return nameInverted(list[0], false);
 }
 
-function chicagoAuthors(list: Author[]) {
+function chicagoAuthors(list: Author[], korean: boolean) {
   const shown = list.length > 10 ? list.slice(0, 7) : list;
   const names = shown.map((a, i) =>
     i === 0 ? nameInverted(a, false) : nameNatural(a, false),
   );
+  if (korean) {
+    return list.length > 10 ? `${names.join(", ")} 외` : names.join(", ");
+  }
   if (list.length > 10) return `${names.join(", ")}, et al.`;
   if (names.length === 1) return names[0];
   if (names.length === 2) return `${names[0]}, and ${names[1]}`;
   return `${names.slice(0, -1).join(", ")}, and ${names[names.length - 1]}`;
 }
 
-function ieeeAuthors(list: Author[]) {
-  if (list.length > 6) return `${nameNatural(list[0], true)} et al.`;
+function ieeeAuthors(list: Author[], korean: boolean) {
+  if (list.length > 6) {
+    return `${nameNatural(list[0], true)} ${korean ? "외" : "et al."}`;
+  }
   const names = list.map((a) => nameNatural(a, true));
+  if (korean) return names.join(", ");
   if (names.length === 1) return names[0];
   if (names.length === 2) return `${names[0]} and ${names[1]}`;
   return `${names.slice(0, -1).join(", ")}, and ${names[names.length - 1]}`;
 }
 
-function prepare(m: Material) {
+// 사용자 입력에 강조 표시 문자가 섞여 있으면 서식이 깨지므로 미리 지운다
+function sanitize(m: Material): Material {
+  return JSON.parse(JSON.stringify(m), (_key, value) =>
+    typeof value === "string" ? stripMarks(value) : value,
+  );
+}
+
+function prepare(raw: Material) {
+  const m = sanitize(raw);
   const authors = m.authors ?? [];
   const org = m.organization?.trim() || undefined;
   const publisher = m.publisher?.trim() || undefined;
   return {
+    korean: isKoreanMaterial(m),
+    standalone: m.type === "단행본" || m.type === "보고서",
+    doi: m.identifier?.match(DOI)?.[0],
     authors,
     org,
     // 저자가 없으면 기관이 저자 자리를 차지하고, 저자가 있으면 기관이 발행처 역할을 한다
@@ -156,11 +203,15 @@ function quoted(title: string, ending: "." | ",") {
 
 function apa(m: Material) {
   const p = prepare(m);
-  const author = p.authors.length ? apaAuthors(p.authors) : p.byline;
+  const author = p.authors.length ? apaAuthors(p.authors, p.korean) : p.byline;
   if (p.journal) {
     const issue = p.issue ? `(${p.issue})` : "";
-    const volume = p.volume || issue ? `${p.volume ?? ""}${issue}` : undefined;
-    const source = [p.journal, volume, p.pages].filter(Boolean).join(", ");
+    const volume = p.volume || issue
+      ? `${emph(p.volume, p.korean) ?? ""}${issue}`
+      : undefined;
+    const source = [emph(p.journal, p.korean), volume, p.pages]
+      .filter(Boolean)
+      .join(", ");
     const year = `(${p.date.year ?? "n.d."}).`;
     const parts = author
       ? [period(author), year, period(p.title), period(source)]
@@ -171,9 +222,10 @@ function apa(m: Material) {
   const d = hasFullDate(p.date)
     ? `${p.date.year}, ${MONTH_FULL[p.date.month - 1]} ${p.date.day}`
     : (p.date.year ?? "n.d.");
+  const title = period(emph(p.title, p.korean)!);
   const parts = author
-    ? [period(author), `(${d}).`, period(p.title)]
-    : [period(p.title), `(${d}).`];
+    ? [period(author), `(${d}).`, title]
+    : [title, `(${d}).`];
   if (p.publisher) parts.push(period(p.publisher));
   if (p.link) parts.push(p.link);
   return parts.join(" ");
@@ -182,15 +234,17 @@ function apa(m: Material) {
 function mla(m: Material) {
   const p = prepare(m);
   const parts: string[] = [];
-  const author = p.authors.length ? mlaAuthors(p.authors) : undefined;
+  const author = p.authors.length ? mlaAuthors(p.authors, p.korean) : undefined;
   if (author) parts.push(period(author));
-  parts.push(p.journal ? quoted(p.title, ".") : period(p.title));
+  parts.push(
+    p.journal ? quoted(p.title, ".") : period(emph(p.title, p.korean)!),
+  );
   const date = hasFullDate(p.date)
     ? `${p.date.day} ${MONTH_MLA[p.date.month - 1]} ${p.date.year}`
     : p.date.year;
   const container = p.journal
     ? [
-        p.journal,
+        emph(p.journal, p.korean),
         p.volume && `vol. ${p.volume}`,
         p.issue && `no. ${p.issue}`,
         date,
@@ -214,7 +268,9 @@ function mla(m: Material) {
 function chicago(m: Material) {
   const p = prepare(m);
   const parts: string[] = [];
-  const author = p.authors.length ? chicagoAuthors(p.authors) : p.byline;
+  const author = p.authors.length
+    ? chicagoAuthors(p.authors, p.korean)
+    : p.byline;
   if (author) parts.push(period(author));
   if (p.journal) {
     const issue = p.issue ? `, no. ${p.issue}` : "";
@@ -222,10 +278,10 @@ function chicago(m: Material) {
     const pages = p.pages ? `: ${p.pages}` : "";
     parts.push(quoted(p.title, "."));
     parts.push(
-      `${p.journal}${volume}${issue} (${p.date.year ?? "n.d."})${pages}.`,
+      `${emph(p.journal, p.korean)}${volume}${issue} (${p.date.year ?? "n.d."})${pages}.`,
     );
   } else {
-    parts.push(period(p.title));
+    parts.push(period(emph(p.title, p.korean)!));
     const date = hasFullDate(p.date)
       ? `${MONTH_FULL[p.date.month - 1]} ${p.date.day}, ${p.date.year}`
       : (p.date.year ?? "n.d.");
@@ -244,10 +300,10 @@ function chicago(m: Material) {
 
 function ieee(m: Material) {
   const p = prepare(m);
-  const author = p.authors.length ? ieeeAuthors(p.authors) : p.byline;
+  const author = p.authors.length ? ieeeAuthors(p.authors, p.korean) : p.byline;
   const rest = p.journal
     ? [
-        p.journal,
+        emph(p.journal, p.korean),
         p.volume && `vol. ${p.volume}`,
         p.issue && `no. ${p.issue}`,
         p.pages && `pp. ${p.pages}`,
@@ -256,11 +312,14 @@ function ieee(m: Material) {
         .filter(Boolean)
         .join(", ")
     : [p.publisher, p.date.year].filter(Boolean).join(", ");
-  const title = quoted(p.title, rest ? "," : ".");
+  // 책과 보고서 제목은 강조, 논문과 기사 제목은 따옴표로 쓴다
+  const title =
+    p.standalone && !p.journal
+      ? period(emph(p.title, p.korean)!)
+      : quoted(p.title, rest ? "," : ".");
   let text = `${author ? `${author}, ` : ""}${title}${rest ? ` ${rest}.` : ""}`;
-  const doi = m.identifier?.match(DOI)?.[0];
-  if (p.journal && doi) {
-    text += ` doi: ${doi}.`;
+  if (p.journal && p.doi) {
+    text += ` doi: ${p.doi}.`;
   } else if (p.link) {
     text += ` [Online]. Available: ${p.link}`;
     if (p.accessed) {
@@ -274,7 +333,8 @@ function ieee(m: Material) {
   return text;
 }
 
-export function formatCitation(m: Material, style: CitationStyle): string {
+// 강조 표시가 들어 있는 인용. 화면과 서식 복사에 쓴다.
+export function formatCitationRich(m: Material, style: CitationStyle): string {
   switch (style) {
     case "apa":
       return apa(m);
@@ -285,4 +345,45 @@ export function formatCitation(m: Material, style: CitationStyle): string {
     case "ieee":
       return ieee(m);
   }
+}
+
+// 서식 없는 인용 (TXT 저장 등)
+export function formatCitation(m: Material, style: CitationStyle): string {
+  return stripMarks(formatCitationRich(m, style));
+}
+
+export function toPlainCitation(rich: string) {
+  return stripMarks(rich);
+}
+
+export type CitationRun = { text: string; italic: boolean; bold: boolean };
+
+export function toCitationRuns(rich: string): CitationRun[] {
+  const runs: CitationRun[] = [];
+  let italic = false;
+  let bold = false;
+  for (const piece of rich.split(/([-])/)) {
+    if (piece === ITALIC[0]) italic = true;
+    else if (piece === ITALIC[1]) italic = false;
+    else if (piece === BOLD[0]) bold = true;
+    else if (piece === BOLD[1]) bold = false;
+    else if (piece) runs.push({ text: piece, italic, bold });
+  }
+  return runs;
+}
+
+// 속성값 없이 텍스트로만 쓰므로 &, <, >만 바꾸면 된다
+const escapeHtml = (s: string) =>
+  s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+// Word, 한글, 구글 문서에 붙여넣을 때 서식이 유지되는 HTML
+export function toCitationHtml(rich: string) {
+  return toCitationRuns(rich)
+    .map(({ text, italic, bold }) => {
+      let html = escapeHtml(text);
+      if (italic) html = `<i>${html}</i>`;
+      if (bold) html = `<b>${html}</b>`;
+      return html;
+    })
+    .join("");
 }

@@ -1,4 +1,4 @@
-import { formatCitation, type CitationStyle } from "@/lib/citation";
+import { formatCitationRich, type CitationStyle } from "@/lib/citation";
 import type { Material } from "@/lib/materials";
 
 const HANGUL_START = /^[ㄱ-ㆎ가-힣]/;
@@ -13,6 +13,7 @@ function sortKey(m: Material) {
   return name.trim().normalize("NFC");
 }
 
+// 강조 표시가 포함된 항목을 돌려준다 (toPlainCitation / toCitationHtml로 변환)
 // 한글 자료를 먼저, 그다음 영문 자료를 가나다/ABC순으로 정렬한다
 function compare(a: Material, b: Material) {
   const keyA = sortKey(a);
@@ -30,7 +31,7 @@ function compare(a: Material, b: Material) {
 export function buildBibliography(materials: Material[], style: CitationStyle) {
   const entries = [...materials]
     .sort(compare)
-    .map((m) => formatCitation(m, style));
+    .map((m) => formatCitationRich(m, style));
   return style === "ieee"
     ? entries.map((entry, i) => `[${i + 1}] ${entry}`)
     : entries;

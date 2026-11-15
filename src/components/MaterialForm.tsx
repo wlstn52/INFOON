@@ -15,7 +15,7 @@ import {
 } from "@/lib/materials";
 import {
   CITATION_STYLES,
-  formatCitation,
+  formatCitationRich,
   type CitationStyle,
 } from "@/lib/citation";
 import { identifierKey } from "@/lib/identifiers";
@@ -599,7 +599,7 @@ export default function MaterialForm({
             </select>
           </div>
           <CitationPanel
-            citation={formatCitation(
+            citation={formatCitationRich(
               {
                 ...collectData(),
                 id: "preview",

@@ -5,7 +5,7 @@ import BibliographyPanel from "@/components/BibliographyPanel";
 import CitationPanel from "@/components/CitationPanel";
 import {
   CITATION_STYLES,
-  formatCitation,
+  formatCitationRich,
   type CitationStyle,
 } from "@/lib/citation";
 import RelationText from "@/components/RelationText";
@@ -108,7 +108,7 @@ export default function SharedMaterialList({
             >
               {isOpen ? "− 인용 닫기" : "+ 인용"}
             </button>
-            {isOpen && <CitationPanel citation={formatCitation(m, style)} />}
+            {isOpen && <CitationPanel citation={formatCitationRich(m, style)} />}
           </div>
         );
       })}
