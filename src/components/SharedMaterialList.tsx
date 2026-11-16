@@ -79,6 +79,18 @@ export default function SharedMaterialList({
               <p className="font-medium">{m.title}</p>
               <p className="text-xs text-zinc-500">{meta}</p>
             </div>
+            {!!m.tags?.length && (
+              <div className="flex flex-wrap gap-1.5 text-xs">
+                {m.tags.map((t) => (
+                  <span
+                    key={t}
+                    className="rounded-full bg-zinc-100 px-2 py-0.5 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+                  >
+                    #{t}
+                  </span>
+                ))}
+              </div>
+            )}
             {m.description && (
               <p className="text-sm text-zinc-600 dark:text-zinc-400">
                 {m.description}

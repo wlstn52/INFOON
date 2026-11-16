@@ -22,6 +22,7 @@ import { identifierKey } from "@/lib/identifiers";
 import type { LookupResult } from "@/lib/lookup";
 import AuthorListEditor from "@/components/AuthorListEditor";
 import CitationPanel from "@/components/CitationPanel";
+import TagInput from "@/components/TagInput";
 
 const IMPORTANCE_OPTIONS = [5, 4, 3, 2, 1];
 
@@ -81,6 +82,10 @@ export default function MaterialForm({
     () => [...new Set(materials.map((m) => m.projectName))],
     [materials],
   );
+  const tagNames = useMemo(
+    () => [...new Set(materials.flatMap((m) => m.tags ?? []))].sort(),
+    [materials],
+  );
   const typeNames = useMemo(
     () => [...new Set(materials.map((m) => m.type))],
     [materials],
@@ -108,6 +113,7 @@ export default function MaterialForm({
   const [volume, setVolume] = useState(material?.volume ?? "");
   const [issue, setIssue] = useState(material?.issue ?? "");
   const [pages, setPages] = useState(material?.pages ?? "");
+  const [tags, setTags] = useState<string[]>(material?.tags ?? []);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
@@ -158,6 +164,7 @@ export default function MaterialForm({
       volume: volume || undefined,
       issue: issue || undefined,
       pages: pages || undefined,
+      tags: tags.length > 0 ? tags : undefined,
     };
   }
 
@@ -269,6 +276,7 @@ export default function MaterialForm({
     setVolume("");
     setIssue("");
     setPages("");
+    setTags([]);
     setLookupId("");
     setLookupNote(null);
     setVerifiedKey(null);
@@ -546,6 +554,13 @@ export default function MaterialForm({
           onChange={(e) => setLocation(e.target.value)}
         />
       </label>
+
+      <div className="flex items-center gap-4">
+        <span className="w-24 shrink-0 text-sm text-zinc-600 dark:text-zinc-400">
+          태그
+        </span>
+        <TagInput tags={tags} onChange={setTags} suggestions={tagNames} />
+      </div>
 
       <label className="flex items-center gap-4">
         <span className="w-24 shrink-0 text-sm text-zinc-600 dark:text-zinc-400">

@@ -27,7 +27,29 @@ export type Material = {
   volume?: string; // 권
   issue?: string; // 호
   pages?: string; // 쪽 ex) 436-444
+  tags?: string[]; // 태그
 };
+
+export type FavoriteAuthor = { key: string; label: string };
+
+const HANGUL = /[ㄱ-ㆎ가-힣]/;
+
+// 같은 저자인지 비교하는 키 (대소문자, 한글 조합 방식 차이를 무시)
+export function authorKey(a: Author) {
+  return [a.familyName, a.middleName, a.givenName]
+    .filter(Boolean)
+    .join(" ")
+    .normalize("NFC")
+    .toLowerCase();
+}
+
+// 화면 표시용 이름: 한글은 "김진수", 영문은 "Yann LeCun"
+export function authorLabel(a: Author) {
+  if (HANGUL.test(a.familyName + a.givenName)) {
+    return [a.familyName, a.middleName, a.givenName].filter(Boolean).join("");
+  }
+  return [a.givenName, a.middleName, a.familyName].filter(Boolean).join(" ");
+}
 
 export type MaterialInput = Omit<Material, "id" | "createdAt">;
 
@@ -69,12 +91,14 @@ export type MaterialsState = {
   status: "loading" | "ready" | "unauthenticated" | "error";
   materials: Material[];
   relations: MaterialRelation[];
+  favoriteAuthors: FavoriteAuthor[];
 };
 
 const INITIAL_STATE: MaterialsState = {
   status: "loading",
   materials: [],
   relations: [],
+  favoriteAuthors: [],
 };
 
 let state = INITIAL_STATE;
@@ -88,22 +112,27 @@ function setState(next: MaterialsState) {
 
 async function load() {
   try {
-    const [materials, relations] = await Promise.all([
+    const responses = await Promise.all([
       fetch("/api/materials"),
       fetch("/api/relations"),
+      fetch("/api/profile"),
     ]);
-    if (materials.status === 401 || relations.status === 401) {
-      setState({ status: "unauthenticated", materials: [], relations: [] });
+    if (responses.some((r) => r.status === 401)) {
+      setState({ ...INITIAL_STATE, status: "unauthenticated" });
       return;
     }
-    if (!materials.ok || !relations.ok) throw new Error();
+    if (responses.some((r) => !r.ok)) throw new Error();
+    const [materials, relations, profile] = await Promise.all(
+      responses.map((r) => r.json()),
+    );
     setState({
       status: "ready",
-      materials: await materials.json(),
-      relations: await relations.json(),
+      materials,
+      relations,
+      favoriteAuthors: profile.favoriteAuthors,
     });
   } catch {
-    setState({ status: "error", materials: [], relations: [] });
+    setState({ ...INITIAL_STATE, status: "error" });
   }
 }
 
@@ -196,4 +225,10 @@ export async function deleteRelation(id: string) {
     ...state,
     relations: state.relations.filter((r) => r.id !== id),
   });
+}
+
+export async function setFavoriteAuthors(favoriteAuthors: FavoriteAuthor[]) {
+  const res = await send("/api/profile", "PUT", { favoriteAuthors });
+  const data: { favoriteAuthors: FavoriteAuthor[] } = await res.json();
+  setState({ ...state, favoriteAuthors: data.favoriteAuthors });
 }

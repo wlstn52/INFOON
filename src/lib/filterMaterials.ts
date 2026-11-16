@@ -1,4 +1,4 @@
-import type { Material } from "@/lib/materials";
+import { authorKey, type Material } from "@/lib/materials";
 
 export const ALL = "전체";
 
@@ -7,6 +7,8 @@ export type SortValue = "latest" | "importance" | "title";
 export type MaterialFilter = {
   project: string;
   type: string;
+  tag: string;
+  author: string | null; // authorKey, 없으면 전체
   query: string;
   sort: SortValue;
 };
@@ -28,6 +30,7 @@ function searchableText(m: Material) {
       m.organization,
       m.identifier,
       ...authors,
+      ...(m.tags ?? []),
     ]
       .filter(Boolean)
       .join("\n"),
@@ -41,11 +44,22 @@ export function matchesQuery(m: Material, query: string) {
   return terms.every((term) => text.includes(term));
 }
 
+export function hasTag(m: Material, tag: string) {
+  const target = normalize(tag);
+  return (m.tags ?? []).some((t) => normalize(t) === target);
+}
+
+export function hasAuthor(m: Material, key: string) {
+  return (m.authors ?? []).some((a) => authorKey(a) === key);
+}
+
 export function filterMaterials(materials: Material[], filter: MaterialFilter) {
   const filtered = materials.filter(
     (m) =>
       (filter.project === ALL || m.projectName === filter.project) &&
       (filter.type === ALL || m.type === filter.type) &&
+      (filter.tag === ALL || hasTag(m, filter.tag)) &&
+      (!filter.author || hasAuthor(m, filter.author)) &&
       matchesQuery(m, filter.query),
   );
   if (filter.sort === "latest") {

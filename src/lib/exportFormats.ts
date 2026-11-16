@@ -31,6 +31,7 @@ const CSV_COLUMNS: [string, (m: Material) => string | number | undefined][] = [
   ["권", (m) => m.volume],
   ["호", (m) => m.issue],
   ["쪽", (m) => m.pages],
+  ["태그", (m) => m.tags?.join("; ")],
   ["등록일", (m) => m.createdAt],
 ];
 
@@ -113,6 +114,7 @@ export function toBibtex(materials: Material[]) {
         ],
         ["year", yearOf(m) && latex(yearOf(m)!)],
         ["language", m.language && latex(m.language)],
+        ["keywords", m.tags?.length ? latex(m.tags.join(", ")) : undefined],
         // doi, url은 LaTeX에서 원문 그대로 다루므로 중괄호만 제거한다
         ["doi", doi && stripBraces(doi)],
         ["url", m.url && stripBraces(m.url)],

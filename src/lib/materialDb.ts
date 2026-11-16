@@ -35,6 +35,34 @@ function text(
   return t;
 }
 
+const MAX_TAGS = 10;
+const MAX_TAG_LENGTH = 30;
+
+// 앞뒤 공백 제거, 대소문자만 다른 중복 제거
+function parseTags(v: unknown): string[] | undefined {
+  if (v === undefined || v === null) return undefined;
+  if (!Array.isArray(v)) throw new ValidationError("tags는 배열이어야 합니다.");
+  const seen = new Set<string>();
+  const tags: string[] = [];
+  for (const item of v) {
+    if (typeof item !== "string") {
+      throw new ValidationError("태그는 문자열이어야 합니다.");
+    }
+    const tag = item.trim().normalize("NFC");
+    if (!tag) continue;
+    if (tag.length > MAX_TAG_LENGTH) {
+      throw new ValidationError(`태그는 ${MAX_TAG_LENGTH}자 이하여야 합니다.`);
+    }
+    if (seen.has(tag.toLowerCase())) continue;
+    seen.add(tag.toLowerCase());
+    tags.push(tag);
+  }
+  if (tags.length > MAX_TAGS) {
+    throw new ValidationError(`태그는 ${MAX_TAGS}개까지 달 수 있습니다.`);
+  }
+  return tags.length ? tags : undefined;
+}
+
 function parseAuthors(v: unknown): Author[] | undefined {
   if (v === undefined || v === null) return undefined;
   if (!Array.isArray(v)) throw new ValidationError("authors는 배열이어야 합니다.");
@@ -94,6 +122,7 @@ export function parseMaterialInput(
         volume: text(b, "volume", 50),
         issue: text(b, "issue", 50),
         pages: text(b, "pages", 50),
+        tags: parseTags(b.tags),
       },
     };
   } catch (e) {
@@ -125,6 +154,7 @@ type Row = {
   volume: string | null;
   issue: string | null;
   pages: string | null;
+  tags: string[] | null;
   projects: { name: string } | null;
 };
 
@@ -151,6 +181,7 @@ export function rowToMaterial(row: Row): Material {
     volume: row.volume ?? undefined,
     issue: row.issue ?? undefined,
     pages: row.pages ?? undefined,
+    tags: row.tags?.length ? row.tags : undefined,
   };
 }
 
@@ -176,6 +207,7 @@ export function inputToColumns(input: MaterialInput, projectId: string) {
     volume: input.volume ?? null,
     issue: input.issue ?? null,
     pages: input.pages ?? null,
+    tags: input.tags ?? [],
   };
 }
 

@@ -6,9 +6,14 @@ import {
   deleteMaterial,
   getServerSnapshot,
   getSnapshot,
+  authorKey,
+  authorLabel,
   IMPORTANCE_LABELS,
   onShowMaterial,
+  setFavoriteAuthors,
+  showMaterial,
   subscribe,
+  type FavoriteAuthor,
 } from "@/lib/materials";
 import {
   CITATION_STYLES,
@@ -21,6 +26,7 @@ import CitationPanel from "@/components/CitationPanel";
 import MaterialForm from "@/components/MaterialForm";
 import MaterialStats from "@/components/MaterialStats";
 import ProjectManager from "@/components/ProjectManager";
+import RelationGraph from "@/components/RelationGraph";
 import RelationPanel from "@/components/RelationPanel";
 import ShareControl from "@/components/ShareControl";
 
@@ -36,10 +42,13 @@ const selectClass =
 const toggleClass =
   "rounded-full border border-zinc-300 px-3 py-1 text-xs text-zinc-600 transition-colors hover:border-[#1b4965] hover:text-[#1b4965] dark:border-zinc-700 dark:text-zinc-400";
 
-type ToolPanel = "stats" | "bibliography" | "projects" | null;
+const chipClass =
+  "rounded-full px-2 py-0.5 text-xs transition-colors";
+
+type ToolPanel = "stats" | "bibliography" | "projects" | "graph" | null;
 
 export default function MaterialBrowser() {
-  const { status, materials, relations } = useSyncExternalStore(
+  const { status, materials, relations, favoriteAuthors } = useSyncExternalStore(
     subscribe,
     getSnapshot,
     getServerSnapshot,
@@ -47,6 +56,9 @@ export default function MaterialBrowser() {
 
   const [selectedProject, setSelectedProject] = useState(ALL);
   const [selectedType, setSelectedType] = useState(ALL);
+  const [selectedTag, setSelectedTag] = useState(ALL);
+  const [authorFilter, setAuthorFilter] = useState<FavoriteAuthor | null>(null);
+  const [favoriteError, setFavoriteError] = useState("");
   const [query, setQuery] = useState("");
   const [toolPanel, setToolPanel] = useState<ToolPanel>(null);
   const [sort, setSort] = useState<SortValue>("latest");
@@ -64,6 +76,8 @@ export default function MaterialBrowser() {
       onShowMaterial((id) => {
         setSelectedProject(ALL);
         setSelectedType(ALL);
+        setSelectedTag(ALL);
+        setAuthorFilter(null);
         setQuery("");
         setHighlightId(id);
         setTimeout(() => {
@@ -99,15 +113,50 @@ export default function MaterialBrowser() {
     () => [ALL, ...new Set(materials.map((m) => m.type))],
     [materials],
   );
+  const tags = useMemo(
+    () => [
+      ALL,
+      ...[...new Set(materials.flatMap((m) => m.tags ?? []))].sort((a, b) =>
+        a.localeCompare(b, "ko"),
+      ),
+    ],
+    [materials],
+  );
 
   // 마지막 자료를 지우거나 옮겨서 선택지가 사라지면 "전체"로 되돌린다
   const project = projects.includes(selectedProject) ? selectedProject : ALL;
   const type = types.includes(selectedType) ? selectedType : ALL;
+  const tag = tags.includes(selectedTag) ? selectedTag : ALL;
 
   const visible = useMemo(
-    () => filterMaterials(materials, { project, type, query, sort }),
-    [materials, project, type, query, sort],
+    () =>
+      filterMaterials(materials, {
+        project,
+        type,
+        tag,
+        author: authorFilter?.key ?? null,
+        query,
+        sort,
+      }),
+    [materials, project, type, tag, authorFilter, query, sort],
   );
+
+  const isFavorite = (key: string) => favoriteAuthors.some((f) => f.key === key);
+
+  async function toggleFavorite(author: FavoriteAuthor) {
+    setFavoriteError("");
+    try {
+      await setFavoriteAuthors(
+        isFavorite(author.key)
+          ? favoriteAuthors.filter((f) => f.key !== author.key)
+          : [...favoriteAuthors, author],
+      );
+    } catch (err) {
+      setFavoriteError(
+        err instanceof Error ? err.message : "관심 저자를 저장하지 못했습니다.",
+      );
+    }
+  }
 
   const toggleTool = (panel: Exclude<ToolPanel, null>) =>
     setToolPanel((current) => (current === panel ? null : panel));
@@ -159,6 +208,20 @@ export default function MaterialBrowser() {
             </option>
           ))}
         </select>
+        {tags.length > 1 && (
+          <select
+            className={selectClass}
+            aria-label="태그"
+            value={tag}
+            onChange={(e) => setSelectedTag(e.target.value)}
+          >
+            {tags.map((t) => (
+              <option key={t} value={t}>
+                {t === ALL ? "태그 전체" : `#${t}`}
+              </option>
+            ))}
+          </select>
+        )}
         <label className="ml-auto flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
           인용 양식
           <select
@@ -174,6 +237,55 @@ export default function MaterialBrowser() {
           </select>
         </label>
       </div>
+
+      {status === "ready" && (favoriteAuthors.length > 0 || authorFilter) && (
+        <div className="flex flex-col gap-2">
+          {favoriteAuthors.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5 text-xs text-zinc-600 dark:text-zinc-400">
+              <span className="mr-1">관심 저자</span>
+              {favoriteAuthors.map((f) => (
+                <button
+                  key={f.key}
+                  type="button"
+                  onClick={() =>
+                    setAuthorFilter(authorFilter?.key === f.key ? null : f)
+                  }
+                  aria-pressed={authorFilter?.key === f.key}
+                  className={`${chipClass} ${
+                    authorFilter?.key === f.key
+                      ? "bg-[#1b4965] text-white"
+                      : "bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+                  }`}
+                >
+                  ★ {f.label}
+                </button>
+              ))}
+            </div>
+          )}
+          {authorFilter && (
+            <div className="flex flex-wrap items-center gap-2 rounded bg-zinc-100 px-3 py-2 text-sm dark:bg-zinc-800">
+              <span>
+                저자 <strong>{authorFilter.label}</strong>의 자료만 보는 중
+              </span>
+              <button
+                type="button"
+                onClick={() => toggleFavorite(authorFilter)}
+                className={toggleClass}
+              >
+                {isFavorite(authorFilter.key) ? "★ 관심 저자 해제" : "☆ 관심 저자로 등록"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setAuthorFilter(null)}
+                className={toggleClass}
+              >
+                × 저자 필터 해제
+              </button>
+            </div>
+          )}
+          {favoriteError && <p className="text-sm text-red-600">{favoriteError}</p>}
+        </div>
+      )}
 
       {status === "ready" && (
         <>
@@ -201,6 +313,13 @@ export default function MaterialBrowser() {
                     ? "− 참고문헌 닫기"
                     : "+ 참고문헌·내보내기"}
                 </button>
+                <button
+                  type="button"
+                  onClick={() => toggleTool("graph")}
+                  className={toggleClass}
+                >
+                  {toolPanel === "graph" ? "− 관계 그래프 닫기" : "+ 관계 그래프"}
+                </button>
               </>
             )}
             <button
@@ -221,6 +340,13 @@ export default function MaterialBrowser() {
               materials={visible}
               style={citationStyle}
               fileBase={project === ALL ? "INFOON" : `INFOON-${project}`}
+            />
+          )}
+          {toolPanel === "graph" && materials.length > 0 && (
+            <RelationGraph
+              materials={visible}
+              relations={relations}
+              onSelect={showMaterial}
             />
           )}
           {toolPanel === "projects" && (
@@ -314,6 +440,46 @@ export default function MaterialBrowser() {
                     {m.description}
                   </p>
                 </div>
+
+                {!!(m.authors?.length || m.tags?.length) && (
+                  <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                    {m.authors?.slice(0, 3).map((a) => {
+                      const key = authorKey(a);
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          title="이 저자의 자료만 보기"
+                          aria-label={`저자 ${authorLabel(a)}의 자료만 보기`}
+                          onClick={() =>
+                            setAuthorFilter({ key, label: authorLabel(a) })
+                          }
+                          className={`${chipClass} border border-zinc-300 text-zinc-700 hover:border-[#1b4965] hover:text-[#1b4965] dark:border-zinc-700 dark:text-zinc-300`}
+                        >
+                          {isFavorite(key) && "★ "}
+                          {authorLabel(a)}
+                        </button>
+                      );
+                    })}
+                    {(m.authors?.length ?? 0) > 3 && (
+                      <span className="text-zinc-500">
+                        외 {(m.authors?.length ?? 0) - 3}명
+                      </span>
+                    )}
+                    {m.tags?.map((t) => (
+                      <button
+                        key={t}
+                        type="button"
+                        title="이 태그의 자료만 보기"
+                        aria-label={`태그 ${t}의 자료만 보기`}
+                        onClick={() => setSelectedTag(t)}
+                        className={`${chipClass} bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700`}
+                      >
+                        #{t}
+                      </button>
+                    ))}
+                  </div>
+                )}
 
                 <div className="flex flex-wrap items-center gap-2">
                   <button
