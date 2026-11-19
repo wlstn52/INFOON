@@ -21,11 +21,13 @@ import {
   type CitationStyle,
 } from "@/lib/citation";
 import { ALL, filterMaterials, type SortValue } from "@/lib/filterMaterials";
+import { parseIdentifier } from "@/lib/identifiers";
 import BibliographyPanel from "@/components/BibliographyPanel";
 import CitationPanel from "@/components/CitationPanel";
 import MaterialForm from "@/components/MaterialForm";
 import MaterialStats from "@/components/MaterialStats";
 import ProjectManager from "@/components/ProjectManager";
+import CitationStatsPanel from "@/components/CitationStatsPanel";
 import RelationGraph from "@/components/RelationGraph";
 import RelationPanel from "@/components/RelationPanel";
 import ShareControl from "@/components/ShareControl";
@@ -65,6 +67,7 @@ export default function MaterialBrowser() {
   const [citationStyle, setCitationStyle] = useState<CitationStyle>("apa");
   const [openId, setOpenId] = useState<string | null>(null);
   const [relationsOpenId, setRelationsOpenId] = useState<string | null>(null);
+  const [statsOpenId, setStatsOpenId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState("");
@@ -399,6 +402,9 @@ export default function MaterialBrowser() {
               (r) => r.sourceId === m.id || r.targetId === m.id,
             ).length;
             const relationsOpen = relationsOpenId === m.id;
+            const parsedId = m.identifier ? parseIdentifier(m.identifier) : null;
+            const doi = parsedId?.kind === "doi" ? parsedId.value : null;
+            const statsOpen = statsOpenId === m.id;
             if (editingId === m.id) {
               return (
                 <div
@@ -502,6 +508,16 @@ export default function MaterialBrowser() {
                       : `+ 관계${relationCount > 0 ? ` ${relationCount}` : ""}`}
                   </button>
 
+                  {doi && (
+                    <button
+                      type="button"
+                      onClick={() => setStatsOpenId(statsOpen ? null : m.id)}
+                      className={toggleClass}
+                    >
+                      {statsOpen ? "− 피인용 닫기" : "+ 피인용"}
+                    </button>
+                  )}
+
                   <button
                     type="button"
                     onClick={() => setEditingId(m.id)}
@@ -542,6 +558,7 @@ export default function MaterialBrowser() {
                 </div>
 
                 {isOpen && <CitationPanel citation={citation} />}
+                {statsOpen && doi && <CitationStatsPanel doi={doi} />}
                 {relationsOpen && (
                   <RelationPanel
                     material={m}
